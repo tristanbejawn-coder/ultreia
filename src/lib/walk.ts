@@ -10,7 +10,7 @@ export type Walker = { key: string; name: string }
 export type WalkRow = {
   id: string; slug: string; name: string; camino: string; start_node: string
   plan: string[]; walkers: Walker[]; starts_on: string | null; timezone: string; digest_hour: number
-  avatar_path: string | null
+  avatar_path: string | null; paid?: boolean
 }
 export type PostRow = {
   id: string; walker: string; kind: 'photo' | 'clip' | 'diary' | 'note' | 'checkin' | 'ping'
@@ -44,13 +44,15 @@ const DEMO_WALK: WalkRow = {
   id: 'demo', slug: 'ju-and-jit', name: 'Ju & Jit walk to Santiago', camino: 'portugues', start_node: 'porto',
   plan: CAMINOS.portugues.routes[0].plan,
   walkers: [{ key: 'ju', name: 'Ju' }, { key: 'jit', name: 'Jit' }],
-  starts_on: '2026-09-10', timezone: 'Europe/Lisbon', digest_hour: 19, avatar_path: '/walks/ju-and-jit.jpg',
+  starts_on: '2026-09-10', timezone: 'Europe/Lisbon', digest_hour: 19, avatar_path: '/walks/ju-and-jit.jpg', paid: true,
 }
 
 export async function getWalk(slug: string): Promise<WalkRow | null> {
   if (!dbConfigured()) return slug === DEMO_WALK.slug ? DEMO_WALK : null
-  const rows = await dbSelect<WalkRow>(`ultreia_walks?slug=eq.${encodeURIComponent(slug)}&select=id,slug,name,camino,start_node,plan,walkers,starts_on,timezone,digest_hour,avatar_path&limit=1`)
-  return rows[0] ?? null
+  const rows = await dbSelect<WalkRow>(`ultreia_walks?slug=eq.${encodeURIComponent(slug)}&select=id,slug,name,camino,start_node,plan,walkers,starts_on,timezone,digest_hour,avatar_path,paid&limit=1`)
+  const w = rows[0]
+  // A draft nobody has paid for is not a page yet.
+  return w && w.paid ? w : null
 }
 
 export async function getWalkByToken(token: string): Promise<{ walk: WalkRow; walker: Walker } | null> {
@@ -59,9 +61,9 @@ export async function getWalkByToken(token: string): Promise<{ walk: WalkRow; wa
   if (!dbConfigured()) return token === 'preview' ? { walk: DEMO_WALK, walker: DEMO_WALK.walkers[1] } : null
   const keys = await dbSelect<{ walk_id: string; walker: string }>(`ultreia_walker_keys?token=eq.${encodeURIComponent(token)}&select=walk_id,walker&limit=1`)
   if (!keys[0]) return null
-  const rows = await dbSelect<WalkRow>(`ultreia_walks?id=eq.${keys[0].walk_id}&select=id,slug,name,camino,start_node,plan,walkers,starts_on,timezone,digest_hour,avatar_path&limit=1`)
+  const rows = await dbSelect<WalkRow>(`ultreia_walks?id=eq.${keys[0].walk_id}&select=id,slug,name,camino,start_node,plan,walkers,starts_on,timezone,digest_hour,avatar_path,paid&limit=1`)
   const walk = rows[0]
-  if (!walk) return null
+  if (!walk || !walk.paid) return null
   const walker = walk.walkers.find(w => w.key === keys[0].walker)
   if (!walker) return null
   return { walk, walker }
