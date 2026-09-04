@@ -58,7 +58,7 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
           { id: 'sat', type: 'raster', source: 'sat', paint: { 'raster-saturation': -0.25, 'raster-brightness-max': 0.85, 'raster-contrast': 0.05 } },
           // A soft hillshade over the imagery gives the coast its cliffs and
           // Galicia its hills without turning the map into a game.
-          ...(terrainUrl ? [{ id: 'shade', type: 'hillshade' as const, source: 'dem', paint: { 'hillshade-exaggeration': 0.35, 'hillshade-shadow-color': '#06090C', 'hillshade-highlight-color': '#E4E7E4', 'hillshade-accent-color': '#0E1418' } }] : []),
+          ...(terrainUrl ? [{ id: 'shade', type: 'hillshade' as const, source: 'dem', paint: { 'hillshade-exaggeration': 0.18, 'hillshade-shadow-color': '#06090C', 'hillshade-highlight-color': '#E4E7E4', 'hillshade-accent-color': '#0E1418', 'hillshade-illumination-direction': 315 } }] : []),
         ],
         ...(terrainUrl ? { terrain: { source: 'dem', exaggeration: 1.35 } } : {}),
       },
@@ -72,7 +72,7 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
     map.once('style.load', () => {
       map.addSource('ahead', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: ahead } } })
       map.addSource('walked', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: walked } } })
-      map.addLayer({ id: 'ahead-line', type: 'line', source: 'ahead', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#E4E7E4', 'line-width': 2, 'line-opacity': 0.55, 'line-dasharray': [0.2, 2.2] } })
+      map.addLayer({ id: 'ahead-line', type: 'line', source: 'ahead', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#E4E7E4', 'line-width': 2.5, 'line-opacity': 0.72, 'line-dasharray': [0.2, 2.2] } })
       map.addLayer({ id: 'walked-glow', type: 'line', source: 'walked', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#F0B429', 'line-width': 16, 'line-opacity': 0.28, 'line-blur': 6 } })
       map.addLayer({ id: 'walked-line', type: 'line', source: 'walked', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#F0B429', 'line-width': 4 } })
 
@@ -120,6 +120,9 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
       const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
       if (state.started && !state.finished) {
         setTimeout(() => map.flyTo({ center: cut, zoom: 11.6, pitch: terrainUrl ? 58 : 45, bearing: -18, duration: reduce ? 0 : 3400, essential: true }), reduce ? 0 : 1400)
+      } else if (!state.started) {
+        // Countdown: a slow push-in onto the start, so the relief shows
+        setTimeout(() => map.flyTo({ center: cut, zoom: 10.4, pitch: terrainUrl ? 50 : 35, bearing: -12, duration: reduce ? 0 : 4200, essential: true }), reduce ? 0 : 1800)
       }
     })
     return () => { map.remove(); mapRef.current = null }
