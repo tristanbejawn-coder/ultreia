@@ -54,10 +54,26 @@ const SOURCES = {
   'barcelos-ponte-de-lima':   { central: 'pt' },
   'ponte-de-lima-rubiaes':    { central: 'pt' },
   'rubiaes-valenca':          { central: 'pt' },
+  // The Vila do Conde connector carries no relation of its own in OSM, so it
+  // is walked by a foot router over the same ways. 10.6 km against the
+  // guidebooks' 11.
+  'vila-do-conde-rates':      { walk: true },
 }
 const CENTRAL_DIRS = { pt: 'central-chunks-41.10_-8.75_42.06_-8.50', es: 'central-chunks-42.02_-8.75_42.90_-8.40' }
 
+const OSRM = 'https://router.project-osrm.org/route/v1/foot'
 const sleep = ms => new Promise(r => setTimeout(r, ms))
+
+// A walked line between two points, for a connector with no OSM relation.
+async function walkRoute(from, to) {
+  const url = `${OSRM}/${from[0]},${from[1]};${to[0]},${to[1]}?overview=full&geometries=geojson`
+  const res = await fetch(url, { headers: { 'User-Agent': UA } })
+  if (!res.ok) throw new Error(`osrm ${res.status}`)
+  const json = await res.json()
+  const line = json?.routes?.[0]?.geometry?.coordinates
+  if (!Array.isArray(line) || line.length < 2) throw new Error('osrm returned no route')
+  return line
+}
 
 async function overpass(query) {
   let lastErr
@@ -257,11 +273,16 @@ for (const [id, spec] of Object.entries(SOURCES)) {
   const from = NODES[fromId], to = NODES[toId]
   if (!from || !to) { console.warn(`skip ${id}: unknown nodes`); continue }
   try {
-    let ways = []
-    if (spec.central) ways = await centralWays(spec.central)
-    else for (const [i, rel] of spec.rel.entries()) ways = ways.concat(await fetchWays(rel, i === 0 ? spec.bbox : undefined))
-    let line = stitch(ways, from, to)
-    line = trim(line, from, to)
+    let line
+    if (spec.walk) {
+      if (OFFLINE && existing[id]) { out[id] = existing[id]; console.log(`${id.padEnd(26)} kept from cache`); continue }
+      line = await walkRoute(from, to)
+    } else {
+      let ways = []
+      if (spec.central) ways = await centralWays(spec.central)
+      else for (const [i, rel] of spec.rel.entries()) ways = ways.concat(await fetchWays(rel, i === 0 ? spec.bbox : undefined))
+      line = trim(stitch(ways, from, to), from, to)
+    }
     if (line.length < 2) { console.warn(`empty ${id}`); continue }
     const km = lengthKm(line)
     const gap = (a, b) => (Math.hypot((a[0] - b[0]) * Math.cos(a[1] * Math.PI / 180), a[1] - b[1]) * 111).toFixed(1)
