@@ -198,6 +198,14 @@ img,video{max-width:100%;display:block}
 .go{padding:16px}
 .go h1{font-family:var(--display);font-stretch:62%;font-weight:900;text-transform:uppercase;font-size:34px;line-height:.9;margin:8px 0 2px}
 .go .sub{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin:0 0 16px}
+/* The front door, at the foot of a walk anyone can see, and its quiet
+   sibling on the walkers' own screen. */
+.front-door{display:flex;align-items:baseline;justify-content:center;gap:8px;flex-wrap:wrap;margin:22px 16px 6px;padding:14px;border-top:1px solid var(--line);text-decoration:none;font-size:14px;color:var(--ink-3)}
+.front-door b{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--azul);font-weight:500}
+.front-door:hover b{color:var(--ink)}
+.share-block.quiet{opacity:.82}
+.big-btn.quiet{background:none;box-shadow:none;border-style:dashed}
+
 .big-btn{display:flex;align-items:center;gap:14px;width:100%;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);padding:16px;margin:0 0 10px;text-align:left;cursor:pointer;border-radius:2px}
 .big-btn b{display:block;font-family:var(--display);font-stretch:62%;font-weight:900;text-transform:uppercase;font-size:22px;line-height:.95}
 .big-btn span{display:block;font-size:13.5px;color:var(--ink-2);margin-top:3px}

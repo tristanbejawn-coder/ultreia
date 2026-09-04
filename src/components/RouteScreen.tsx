@@ -142,6 +142,13 @@ export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, b
             )
           })}
         </div>
+
+        {/* The front door. Someone lands here because a pilgrim sent them the
+            link; this is the only place we say the thing can be theirs too. */}
+        <Link className="front-door" href="/sign-in">
+          <span>Walking your own Camino?</span>
+          <b>Make one like this →</b>
+        </Link>
       </section>
 
       {open && <Lightbox state={state} id={open} onClose={() => setOpen(null)} />}

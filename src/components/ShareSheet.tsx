@@ -26,6 +26,9 @@ export default function ShareSheet({ name, publicUrl, code, ownerLinks, welcome,
   const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
   const share = (title: string, url: string) => navigator.share({ title, url }).catch(() => {})
   const short = (u: string) => u.replace(/^https?:\/\//, '')
+  // Where a pilgrim they meet would start their own.
+  let startUrl = '/sign-in'
+  try { startUrl = new URL(publicUrl, typeof window === 'undefined' ? 'https://ultreia.app' : window.location.href).origin + '/sign-in' } catch {}
 
   return (
     <div className="share-veil" onClick={onClose}>
@@ -69,6 +72,16 @@ export default function ShareSheet({ name, publicUrl, code, ownerLinks, welcome,
         {welcome && ownerLinks && ownerLinks.length > 0 && (
           <div className="share-block"><div className="label">3 · Post a photo from a walker’s screen and watch it land on the map</div></div>
         )}
+
+        <div className="share-block quiet">
+          <div className="label">Met someone walking? Send them this</div>
+          <div className="share-line">
+            <span className="mono">{short(startUrl)}</span>
+            <button className="btn small" onClick={() => copy('start', startUrl)}>{done === 'start' ? 'Copied' : 'Copy'}</button>
+            {canShare && <button className="btn small ghost" onClick={() => share('Make your own Ultreia', startUrl)}>Send</button>}
+          </div>
+          <p className="share-hint">They make their own walk and their own map. Yours stays yours.</p>
+        </div>
 
         <button className="btn block ghost" onClick={onClose}>{welcome ? 'See the walk' : 'Done'}</button>
       </div>

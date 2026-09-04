@@ -100,6 +100,16 @@ export default function GoScreen({ token }: { token: string }) {
     setMode('home'); load()
   }
 
+  // Hand Ultreia to someone met on the road: the phone's own share sheet if
+  // it has one, the clipboard if not.
+  const [handed, setHanded] = useState(false)
+  async function handOver() {
+    const url = `${window.location.origin}/sign-in`
+    const done = () => { setHanded(true); setTimeout(() => setHanded(false), 2200) }
+    if (typeof navigator.share === 'function') { try { await navigator.share({ title: 'Ultreia', text: 'Follow your own Camino here', url }); done(); return } catch { return } }
+    try { await navigator.clipboard.writeText(url); done() } catch { window.prompt('Copy this link', url) }
+  }
+
   if (err && !me) return <div className="go"><div className="empty"><b>Ultreia</b>{err}</div></div>
   if (!me) return <div className="go"><div className="empty"><b>Ultreia</b>Loading…</div></div>
 
@@ -154,7 +164,15 @@ export default function GoScreen({ token }: { token: string }) {
       )}
 
       {mode === 'home' && (
-        <p className="label" style={{ marginTop: 18 }}><a href={state.walk.slug === 'ju-and-jit' ? '/' : `/w/${state.walk.slug}`} style={{ color: 'var(--azul)' }}>See what the family sees →</a></p>
+        <>
+          <p className="label" style={{ marginTop: 18 }}><a href={state.walk.slug === 'ju-and-jit' ? '/' : `/w/${state.walk.slug}`} style={{ color: 'var(--azul)' }}>See what the family sees →</a></p>
+          {/* For the couple you fall in with at an albergue: one tap sends
+              them the front door, and they end up with their own map. */}
+          <button className="big-btn quiet" onClick={handOver}>
+            <span className="ic" style={{ background: 'var(--sunk)' }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 3v12M8 7l4-4 4 4M5 14v5h14v-5" /></svg></span>
+            <span><b>{handed ? 'Sent' : 'Met another pilgrim?'}</b><span>Send them Ultreia — they get their own walk and their own map</span></span>
+          </button>
+        </>
       )}
 
       {mode === 'photo' && draft && (
