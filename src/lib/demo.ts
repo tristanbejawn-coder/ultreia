@@ -7,8 +7,9 @@
 // content into a real database as a real walk, run scripts/seed-demo.mjs;
 // both read src/data/sample-walk.json so the two can't drift.
 //
-// Pictures are placeholders in public/demo/sample, not photographs of the
-// walkers. public/demo holds the other demo walk's licensed photographs.
+// Pictures come from public/demo: the first three days are real photographs
+// of the places, licensed from Wikimedia and credited in their captions;
+// public/demo/sample holds generated stand-ins for the days after.
 
 import type { Post, MessageRow, PostRow } from '@/lib/walk'
 import type { Route } from '@/lib/route'
