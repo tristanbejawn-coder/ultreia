@@ -111,8 +111,15 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
       // wrapper of their own, so this has to go on the element itself —
       // anything set on the parent lands on the map surface.
       const layer = (m: maplibregl.Marker, z: number) => { m.getElement().style.zIndex = String(z) }
-      // Where the things a fact must not hide behind are standing.
-      const occupied: [number, number][] = []
+      // The things a fact must not hide behind. Kept as elements, not
+      // coordinates: with terrain on, a marker is drawn at its ground
+      // elevation, tens of pixels from where the flat projection puts it, so
+      // anything measuring where a marker really is has to read the DOM.
+      const occupied: HTMLElement[] = []
+      const centreOf = (e: HTMLElement, box: DOMRect) => {
+        const r = e.getBoundingClientRect()
+        return { x: r.x + r.width / 2 - box.x, y: r.y + r.height / 2 - box.y }
+      }
 
       // Posts
       const located = state.posts.filter(p => p.km != null && (p.kind === 'photo' || p.kind === 'clip' || p.kind === 'diary' || p.kind === 'checkin' || p.kind === 'ping'))
@@ -130,7 +137,7 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         }
         if (p.kind !== 'checkin' && p.kind !== 'ping' && onOpenPost) m.addEventListener('click', () => onOpenPost(p.id))
         layer(new maplibregl.Marker({ element: m, anchor: 'center' }).setLngLat(at).addTo(map), p.kind === 'checkin' || p.kind === 'ping' ? 2 : 4)
-        occupied.push(at)
+        occupied.push(m)
       }
 
       // Facts standing on the ground they cross. Only the ones the chosen
@@ -162,7 +169,7 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
       const openLore = (f: LoreMarker) => {
         // Hang the card below the ring when the ring is high on the screen,
         // above it when it is low, so it never runs off the top.
-        const y = map.project(f.l.at).y
+        const y = centreOf(f.el, map.getContainer().getBoundingClientRect()).y
         pop.options.anchor = y < map.getContainer().clientHeight * 0.45 ? 'top' : 'bottom'
         const card = document.createElement('div')
         card.className = 'lore-card'
@@ -187,11 +194,12 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
       const placeMarks = () => {
         const z = map.getZoom()
         const on = z >= 9.4, named = z >= 11.6
-        const taken = occupied.map(c => map.project(c))
+        const box = map.getContainer().getBoundingClientRect()
+        const taken = occupied.map(e => centreOf(e, box))
         for (const f of loreMarks) {
           let show = on
           if (show) {
-            const at = map.project(f.l.at)
+            const at = centreOf(f.el, box)
             for (const t of taken) if (Math.hypot(at.x - t.x, at.y - t.y) < CLEAR_PX) { show = false; break }
             if (show) taken.push(at)
           }
@@ -200,12 +208,20 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
           f.el.classList.toggle('named', show && named)
         }
       }
+      // Measuring the DOM on every move frame would jank; once per frame is
+      // plenty for deciding what is on screen.
+      let queued = 0
+      const placeSoon = () => {
+        if (queued) return
+        queued = requestAnimationFrame(() => { queued = 0; placeMarks() })
+      }
       // A tap opens the nearest fact within a thumb's width of where it landed.
       const nearestLore = (pt: { x: number; y: number }): LoreMarker | null => {
         let best: LoreMarker | null = null, bestD = TAP_PX
+        const box = map.getContainer().getBoundingClientRect()
         for (const f of loreMarks) {
           if (!f.shown) continue
-          const at = map.project(f.l.at)
+          const at = centreOf(f.el, box)
           const d = Math.hypot(at.x - pt.x, at.y - pt.y)
           if (d < bestD) { bestD = d; best = f }
         }
@@ -217,7 +233,7 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         map.getCanvas().style.cursor = f ? 'pointer' : ''
         for (const o of loreMarks) o.el.classList.toggle('near', o === f)
       })
-      map.on('move', placeMarks); map.on('zoom', placeMarks); placeMarks()
+      map.on('move', placeSoon); map.on('zoom', placeSoon); map.on('idle', placeSoon); placeMarks()
 
       // The figures
       const f = document.createElement('div')
