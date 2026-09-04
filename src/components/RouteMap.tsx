@@ -161,6 +161,10 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
       }
 
       const openLore = (f: LoreMarker) => {
+        // Hang the card below the ring when the ring is high on the screen,
+        // above it when it is low, so it never runs off the top.
+        const y = map.project(f.l.at).y
+        pop.options.anchor = y < map.getContainer().clientHeight * 0.45 ? 'top' : 'bottom'
         const card = document.createElement('div')
         card.className = 'lore-card'
         const h = document.createElement('h3'); h.textContent = f.l.title

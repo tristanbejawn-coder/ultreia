@@ -98,6 +98,10 @@ img,video{max-width:100%;display:block}
 .chip{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);background:var(--ground);padding:4px 9px;border-radius:10px;line-height:1.4}
 /* A fact along this stage: a proper target, and it says what it is. Tapping
    takes the map to it rather than asking a thumb to find a ring. */
+/* Facts get their own line under a stage, not a scramble with the character
+   chip, so each is a full target and the row reads as an offer. */
+.fact-row{margin:2px 16px 14px;display:flex;flex-direction:column;gap:7px}
+.fact-row .facts{display:flex;flex-wrap:wrap;gap:7px}
 button.chip.fact{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:6px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer;font:inherit;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;border-radius:17px}
 button.chip.fact .dot{width:7px;height:7px;border-radius:50%;background:var(--arrow);flex:none}
 button.chip.fact:hover,button.chip.fact:focus-visible{border-color:var(--arrow);color:var(--ink);outline:none}

@@ -28,8 +28,8 @@ export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, b
   // twice still send the map back to it.
   const [focusLore, setFocusLore] = useState<{ id: string; n: number } | null>(null)
   const goToLore = (id: string) => {
+    window.scrollTo({ top: 0, behavior: 'auto' })
     setFocusLore(f => ({ id, n: (f?.n ?? 0) + 1 }))
-    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
   useEffect(() => {
     // Straight from paying: let the flyover land first, then the links.
@@ -154,14 +154,19 @@ export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, b
                   </span>
                   <span className="row-km tnum">{(s.endKm - s.km).toFixed(0)}<span> km</span></span>
                 </Link>
-                <div className="chip-row">
-                  <span className="chip">{s.character}</span>
-                  {(loreBySeg[s.id] || []).map(l => (
-                    <button key={l.id} type="button" className="chip fact" onClick={() => goToLore(l.id)}>
-                      <span className="dot" aria-hidden="true" />{l.label}
-                    </button>
-                  ))}
-                </div>
+                <div className="chip-row"><span className="chip">{s.character}</span></div>
+                {(loreBySeg[s.id] || []).length > 0 && (
+                  <div className="fact-row">
+                    <span className="label">Along the way</span>
+                    <div className="facts">
+                      {(loreBySeg[s.id] || []).map(l => (
+                        <button key={l.id} type="button" className="chip fact" onClick={() => goToLore(l.id)}>
+                          <span className="dot" aria-hidden="true" />{l.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )
           })}
