@@ -49,7 +49,7 @@ const DEMO_WALK: WalkRow = {
 
 export async function getWalk(slug: string): Promise<WalkRow | null> {
   if (!dbConfigured()) return slug === DEMO_WALK.slug ? DEMO_WALK : null
-  const rows = await dbSelect<WalkRow>(`walks?slug=eq.${encodeURIComponent(slug)}&select=id,slug,name,camino,start_node,plan,walkers,starts_on,timezone,digest_hour,avatar_path&limit=1`)
+  const rows = await dbSelect<WalkRow>(`ultreia_walks?slug=eq.${encodeURIComponent(slug)}&select=id,slug,name,camino,start_node,plan,walkers,starts_on,timezone,digest_hour,avatar_path&limit=1`)
   return rows[0] ?? null
 }
 
@@ -57,9 +57,9 @@ export async function getWalkByToken(token: string): Promise<{ walk: WalkRow; wa
   // Preview mode: /go/preview opens the walkers' screen with the demo walk so
   // it can be seen before a database exists. Posting has nowhere to go yet.
   if (!dbConfigured()) return token === 'preview' ? { walk: DEMO_WALK, walker: DEMO_WALK.walkers[1] } : null
-  const keys = await dbSelect<{ walk_id: string; walker: string }>(`walker_keys?token=eq.${encodeURIComponent(token)}&select=walk_id,walker&limit=1`)
+  const keys = await dbSelect<{ walk_id: string; walker: string }>(`ultreia_walker_keys?token=eq.${encodeURIComponent(token)}&select=walk_id,walker&limit=1`)
   if (!keys[0]) return null
-  const rows = await dbSelect<WalkRow>(`walks?id=eq.${keys[0].walk_id}&select=id,slug,name,camino,start_node,plan,walkers,starts_on,timezone,digest_hour,avatar_path&limit=1`)
+  const rows = await dbSelect<WalkRow>(`ultreia_walks?id=eq.${keys[0].walk_id}&select=id,slug,name,camino,start_node,plan,walkers,starts_on,timezone,digest_hour,avatar_path&limit=1`)
   const walk = rows[0]
   if (!walk) return null
   const walker = walk.walkers.find(w => w.key === keys[0].walker)
@@ -69,7 +69,7 @@ export async function getWalkByToken(token: string): Promise<{ walk: WalkRow; wa
 
 export async function getChoices(walkId: string): Promise<Record<string, string>> {
   if (!dbConfigured()) return {}
-  const rows = await dbSelect<{ fork_id: string; segment_id: string }>(`route_choices?walk_id=eq.${walkId}&select=fork_id,segment_id&order=chosen_at.desc`)
+  const rows = await dbSelect<{ fork_id: string; segment_id: string }>(`ultreia_route_choices?walk_id=eq.${walkId}&select=fork_id,segment_id&order=chosen_at.desc`)
   const out: Record<string, string> = {}
   for (const r of rows) if (!(r.fork_id in out)) out[r.fork_id] = r.segment_id
   return out
@@ -89,12 +89,12 @@ export async function getWalkState(slug: string): Promise<WalkState | null> {
   let posts: Post[] = []
   let messages: MessageRow[] = []
   if (dbConfigured()) {
-    const rows = await dbSelect<PostRow>(`posts?walk_id=eq.${walk.id}&deleted_at=is.null&select=id,walker,kind,caption,taken_at,lat,lng,km,km_source,segment_id,media_path,poster_path,width,height,duration_s,transcript&order=taken_at.desc&limit=500`)
-    const reacts = rows.length ? await dbSelect<{ post_id: string; emoji: string }>(`reactions?post_id=in.(${rows.map(r => r.id).join(',')})&select=post_id,emoji`) : []
+    const rows = await dbSelect<PostRow>(`ultreia_posts?walk_id=eq.${walk.id}&deleted_at=is.null&select=id,walker,kind,caption,taken_at,lat,lng,km,km_source,segment_id,media_path,poster_path,width,height,duration_s,transcript&order=taken_at.desc&limit=500`)
+    const reacts = rows.length ? await dbSelect<{ post_id: string; emoji: string }>(`ultreia_reactions?post_id=in.(${rows.map(r => r.id).join(',')})&select=post_id,emoji`) : []
     const byPost: Record<string, Record<string, number>> = {}
     for (const r of reacts) { byPost[r.post_id] ??= {}; byPost[r.post_id][r.emoji] = (byPost[r.post_id][r.emoji] || 0) + 1 }
     posts = rows.map(r => ({ ...r, media_url: publicUrl(r.media_path), poster_url: publicUrl(r.poster_path), reactions: byPost[r.id] || {} }))
-    messages = await dbSelect<MessageRow>(`messages?walk_id=eq.${walk.id}&deleted_at=is.null&select=id,from_name,body,written_at,delivered_at&order=written_at.desc&limit=200`)
+    messages = await dbSelect<MessageRow>(`ultreia_messages?walk_id=eq.${walk.id}&deleted_at=is.null&select=id,from_name,body,written_at,delivered_at&order=written_at.desc&limit=200`)
   }
 
   // Position: the furthest kilometre they've been placed at, by check-in or

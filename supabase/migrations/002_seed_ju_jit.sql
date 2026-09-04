@@ -2,7 +2,7 @@
 -- Walker tokens: replace with long random strings before running
 -- (e.g. `openssl rand -hex 24`). They ARE the private posting links.
 
-insert into walks (slug, name, camino, start_node, plan, walkers, starts_on, avatar_path)
+insert into ultreia_walks (slug, name, camino, start_node, plan, walkers, starts_on, avatar_path)
 values (
   'ju-and-jit',
   'Ju & Jit walk to Santiago',
@@ -17,9 +17,9 @@ values (
 )
 on conflict (slug) do nothing;
 
-insert into walker_keys (token, walk_id, walker)
-select 'REPLACE-WITH-RANDOM-TOKEN-JU',  id, 'ju'  from walks where slug = 'ju-and-jit'
+insert into ultreia_walker_keys (token, walk_id, walker)
+select 'REPLACE-WITH-RANDOM-TOKEN-JU',  id, 'ju'  from ultreia_walks where slug = 'ju-and-jit'
 on conflict do nothing;
-insert into walker_keys (token, walk_id, walker)
-select 'REPLACE-WITH-RANDOM-TOKEN-JIT', id, 'jit' from walks where slug = 'ju-and-jit'
+insert into ultreia_walker_keys (token, walk_id, walker)
+select 'REPLACE-WITH-RANDOM-TOKEN-JIT', id, 'jit' from ultreia_walks where slug = 'ju-and-jit'
 on conflict do nothing;

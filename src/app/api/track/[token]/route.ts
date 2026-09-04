@@ -18,7 +18,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ token: string 
   const lat = Number(body.lat), lng = Number(body.lon)
   const at = body.tst ? new Date(Number(body.tst) * 1000) : new Date()
 
-  const last = await dbSelect<{ lat: number; lng: number; taken_at: string }>(`posts?walk_id=eq.${auth.walk.id}&kind=eq.ping&km_source=eq.tracker&select=lat,lng,taken_at&order=taken_at.desc&limit=1`)
+  const last = await dbSelect<{ lat: number; lng: number; taken_at: string }>(`ultreia_posts?walk_id=eq.${auth.walk.id}&kind=eq.ping&km_source=eq.tracker&select=lat,lng,taken_at&order=taken_at.desc&limit=1`)
   if (last[0] && last[0].lat != null) {
     const moved = haversineKm([last[0].lng, last[0].lat], [lng, lat])
     const minutes = (at.getTime() - Date.parse(last[0].taken_at)) / 60000
@@ -28,6 +28,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ token: string 
   const route = buildRoute(auth.walk.camino, auth.walk.plan, choices)
   const snap = snapToRoute(route, [lng, lat])
   if (snap.offKm > 5) return NextResponse.json([])   // a bus to Braga is not the Camino
-  await dbInsert('posts', { walk_id: auth.walk.id, walker: auth.walker.key, kind: 'ping', km: +snap.km.toFixed(2), km_source: 'tracker', segment_id: snap.segment, lat, lng, taken_at: at.toISOString() })
+  await dbInsert('ultreia_posts', { walk_id: auth.walk.id, walker: auth.walker.key, kind: 'ping', km: +snap.km.toFixed(2), km_source: 'tracker', segment_id: snap.segment, lat, lng, taken_at: at.toISOString() })
   return NextResponse.json([])
 }

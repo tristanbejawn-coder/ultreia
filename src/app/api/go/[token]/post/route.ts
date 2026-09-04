@@ -48,7 +48,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ token: string 
     if (!kmSource) kmSource = 'device'
   } else { lat = NaN; lng = NaN }
 
-  const [row] = await dbInsert('posts', {
+  const [row] = await dbInsert('ultreia_posts', {
     walk_id: auth.walk.id, walker: auth.walker.key, kind, caption,
     taken_at: takenAt || new Date().toISOString(),
     lat: isFinite(lat) ? lat : null, lng: isFinite(lng) ? lng : null,

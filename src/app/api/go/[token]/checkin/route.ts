@@ -17,7 +17,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ token: string 
     const snap = snapToRoute(route, [Number(body.lng), Number(body.lat)])
     if (snap.offKm > 5) return NextResponse.json({ error: 'off route', offKm: +snap.offKm.toFixed(1) }, { status: 422 })
     km = +snap.km.toFixed(2); segmentId = snap.segment
-    await dbInsert('posts', { walk_id: auth.walk.id, walker: auth.walker.key, kind: 'ping', km, km_source: 'device', segment_id: segmentId, lat: Number(body.lat), lng: Number(body.lng) })
+    await dbInsert('ultreia_posts', { walk_id: auth.walk.id, walker: auth.walker.key, kind: 'ping', km, km_source: 'device', segment_id: segmentId, lat: Number(body.lat), lng: Number(body.lng) })
     return NextResponse.json({ ok: true, km, kind: 'ping' })
   }
   if (typeof body.segmentId === 'string') {
@@ -29,6 +29,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ token: string 
   }
   if (km == null) return NextResponse.json({ error: 'bad request' }, { status: 400 })
   const caption = typeof body.caption === 'string' ? body.caption.trim().slice(0, 300) || null : null
-  await dbInsert('posts', { walk_id: auth.walk.id, walker: auth.walker.key, kind: 'checkin', caption, km, km_source: 'checkin', segment_id: segmentId })
+  await dbInsert('ultreia_posts', { walk_id: auth.walk.id, walker: auth.walker.key, kind: 'checkin', caption, km, km_source: 'checkin', segment_id: segmentId })
   return NextResponse.json({ ok: true, km })
 }

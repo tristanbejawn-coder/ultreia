@@ -12,6 +12,6 @@ export async function GET(_: Request, ctx: { params: Promise<{ token: string }> 
   if (!auth) return NextResponse.json({ error: 'no such link' }, { status: 404 })
   const state = await getWalkState(auth.walk.slug)
   if (!state) return NextResponse.json({ error: 'no such walk' }, { status: 404 })
-  const bundle = state.demo ? [] : await dbSelect<MessageRow>(`messages?walk_id=eq.${auth.walk.id}&deleted_at=is.null&select=id,from_name,body,written_at,delivered_at&order=written_at.desc&limit=100`)
+  const bundle = state.demo ? [] : await dbSelect<MessageRow>(`ultreia_messages?walk_id=eq.${auth.walk.id}&deleted_at=is.null&select=id,from_name,body,written_at,delivered_at&order=written_at.desc&limit=100`)
   return NextResponse.json({ walker: auth.walker, state: serialize(state), bundle })
 }

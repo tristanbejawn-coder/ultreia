@@ -3,7 +3,7 @@
 
 const URL_BASE = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-const BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'media'
+const BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'ultreia-media'
 
 export type Json = Record<string, unknown>
 
