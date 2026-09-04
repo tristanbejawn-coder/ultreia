@@ -1,10 +1,14 @@
 // Put the sample walk into a real database, as a real walk on its own slug.
 //
-//   node scripts/seed-demo.mjs                     # create/refresh /w/demo
+//   node scripts/seed-demo.mjs                     # create/refresh /w/demo-full
 //   node scripts/seed-demo.mjs --slug sales-demo   # a second one, any slug
 //   node scripts/seed-demo.mjs --starts-on 2026-09-10
 //   node scripts/seed-demo.mjs --dry-run           # print, write nothing
 //   node scripts/seed-demo.mjs --delete            # remove it again
+//
+// Not to be confused with scripts/seed-demo.sql, which seeds a different,
+// shorter demo walk at slug 'demo' from real licensed photographs. This one
+// is the six-day version and lives at 'demo-full'; the two coexist.
 //
 // Why this exists: src/lib/demo.ts only renders when Supabase is absent, and
 // that switch is site-wide. Once the env vars are set — as they are on
@@ -16,7 +20,7 @@
 // deleted and rewritten each time; reactions cascade with their posts.
 //
 // Content comes from src/data/sample-walk.json, the same file the no-database
-// fallback reads. Pictures are served from public/demo — media_path values
+// fallback reads. Pictures are served from public/demo/sample — media_path values
 // beginning with "/" are passed through untouched by publicUrl() in
 // src/lib/db.ts, so nothing needs uploading to Storage. They do have to be in
 // the deployed build.
@@ -34,9 +38,9 @@ const flag = (name, fallback = null) => {
 }
 const has = name => args.includes(`--${name}`)
 
-const SLUG = flag('slug', 'demo')
-const NAME = flag('name', 'Ju & Jit walk to Santiago (sample)')
-const CODE = flag('code', 'DEMO')
+const SLUG = flag('slug', 'demo-full')
+const NAME = flag('name', 'Ju & Jit walk to Santiago (six-day sample)')
+const CODE = flag('code', 'FULL')
 const DRY = has('dry-run')
 const DELETE = has('delete')
 
@@ -159,7 +163,7 @@ function postRows(walkId) {
       km_source: s.kind === 'checkin' ? 'checkin' : 'exif',
       segment_id: s.segment,
       // A path starting with "/" is served from public/, not from Storage.
-      media_path: s.file ? `/demo/${s.file}` : null,
+      media_path: s.file ? `${sample.mediaDir}/${s.file}` : null,
       width: s.w ?? null,
       height: s.h ?? null,
     }
@@ -221,7 +225,7 @@ console.log(`walk       ${SLUG} · "${NAME}" · code ${CODE}`)
 console.log(`starts     ${STARTS_ON} (day ${sample.daysIn + 1} today)`)
 console.log(`position   ${position.toFixed(1)} km of ${TOTAL_KM.toFixed(1)}`)
 console.log(`rows       ${sample.posts.length} posts · ${reactionRows().length} reactions · ${sample.messages.length} messages`)
-console.log(`pictures   ${sample.posts.filter(p => p.file).length} from public/demo`)
+console.log(`pictures   ${sample.posts.filter(p => p.file).length} from public${sample.mediaDir}`)
 
 if (DRY) {
   console.log('\n--dry-run: nothing written.')

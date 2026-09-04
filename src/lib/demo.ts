@@ -7,7 +7,8 @@
 // content into a real database as a real walk, run scripts/seed-demo.mjs;
 // both read src/data/sample-walk.json so the two can't drift.
 //
-// Pictures are placeholders in public/demo, not photographs of the walkers.
+// Pictures are placeholders in public/demo/sample, not photographs of the
+// walkers. public/demo holds the other demo walk's licensed photographs.
 
 import type { Post, MessageRow, PostRow } from '@/lib/walk'
 import type { Route } from '@/lib/route'
@@ -51,7 +52,7 @@ export function demoPosts(route: Route, startsOn: string): Post[] {
     const seg = route.segmentStarts.find(x => x.id === s.segment)
     if (!seg) continue                                    // a fork went the other way
     const km = seg.km + (seg.endKm - seg.km) * s.at
-    const path = s.file ? `/demo/${s.file}` : null
+    const path = s.file ? `${sample.mediaDir}/${s.file}` : null
     posts.push({
       id: s.id, walker: s.walker, kind: s.kind as PostRow['kind'], caption: s.caption ?? null,
       taken_at: stamp(startsOn, s.day, s.time),
