@@ -2,10 +2,13 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "ultreia",
+      "name": "ultreia-verify",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "-p", "3922"],
-      "port": 3922
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "autoPort": true
     }
   ]
 }

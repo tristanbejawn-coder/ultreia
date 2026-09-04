@@ -44,7 +44,26 @@ img,video{max-width:100%;display:block}
 
 /* route hero */
 .hero{position:relative;background:var(--map-ground);color:#E4E7E4}
-.map{height:min(64vh,600px);width:100%}
+.map{height:min(64vh,600px);width:100%;position:relative;background:var(--map-ground)}
+/* Satellite tiles take a moment on a cold load. Until they land the hero was
+   a flat black rectangle, which reads as breakage; give it the grain of a map
+   that hasn't drawn yet, and fade the imagery up when it arrives. RouteMap
+   adds .ready on the map's own container. Markers live in the canvas
+   container, so fading that carries the pins and the gold line with it. */
+.map .maplibregl-canvas-container{opacity:0;transition:opacity .55s ease}
+.map.ready .maplibregl-canvas-container{opacity:1}
+.map::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;transition:opacity .55s ease;
+  background:
+    radial-gradient(120% 85% at 50% 42%,rgba(155,185,200,.08),transparent 68%),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 1px,transparent 1px 46px),
+    repeating-linear-gradient(90deg,rgba(255,255,255,.03) 0 1px,transparent 1px 46px);
+  animation:map-wait 2.6s ease-in-out infinite}
+.map.ready::after{opacity:0;animation:none}
+@keyframes map-wait{0%,100%{opacity:.5}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  .map::after{animation:none}
+  .map::after,.map .maplibregl-canvas-container{transition:none}
+}
 .map .maplibregl-ctrl-attrib{font:9px/1.3 var(--mono);background:rgba(14,20,24,.6);color:#9BA5AD;max-width:60vw;border-radius:2px}
 .map .maplibregl-ctrl-attrib-button{background-color:rgba(14,20,24,.6)}
 .map .maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-inner{display:none}
@@ -352,6 +371,20 @@ button.chip.fact:hover,button.chip.fact:focus-visible{border-color:var(--arrow);
   -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
 .hero-share svg{width:18px;height:18px}
 .hero-share:focus-visible{outline:2px solid var(--arrow);outline-offset:2px}
+/* The way back to the welcome sheet, mirroring Share across the header. */
+.hero-info{position:absolute;left:14px;top:16px;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;cursor:pointer;
+  background:rgba(245,246,243,.16);border:1px solid rgba(255,255,255,.22);color:#F5F6F3;
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.hero-info svg{width:18px;height:18px}
+.hero-info:focus-visible{outline:2px solid var(--arrow);outline-offset:2px}
+
+/* Welcome: three rows saying what the map is, what will fill it, and the one
+   thing the visitor can do. Same glass as the share sheet. */
+.welcome .welcome-rows{list-style:none;margin:16px 0 20px;padding:0;display:flex;flex-direction:column;gap:16px}
+.welcome .welcome-rows li{display:flex;gap:13px;align-items:flex-start}
+.welcome .welcome-rows svg{width:21px;height:21px;flex:none;margin-top:1px;color:var(--arrow)}
+.welcome .welcome-rows div{font-size:14px;line-height:1.45;color:#B9C2C8}
+.welcome .welcome-rows b{display:block;font-weight:600;font-size:15px;color:#E4E7E4;margin-bottom:2px}
 .share-veil{position:fixed;inset:0;z-index:60;background:rgba(14,20,24,.55);display:flex;align-items:flex-end;justify-content:center;
   -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .share-sheet{width:100%;max-width:560px;max-height:88dvh;overflow:auto;padding:12px 20px calc(22px + var(--safe-b));color:#E4E7E4;

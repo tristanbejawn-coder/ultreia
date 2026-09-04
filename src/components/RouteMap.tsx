@@ -17,6 +17,9 @@ type Props = {
   attribution: string
   terrainUrl?: string | null
   onOpenPost?: (id: string) => void
+  // Fired once the satellite imagery has landed, so anything that talks about
+  // what's on the map can wait until there is a map to talk about.
+  onReady?: () => void
   // A fact chosen from the stage card in the sheet: fly to it and open it.
   focusLore?: { id: string; n: number } | null
 }
@@ -41,7 +44,10 @@ function pointAt(points: [number, number, number][], km: number): [number, numbe
   return [l[0], l[1]]
 }
 
-export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOpenPost, focusLore }: Props) {
+export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOpenPost, onReady: onReadyProp, focusLore }: Props) {
+  // Kept in a ref so a changing callback never re-runs the map's setup effect.
+  const readyCb = useRef(onReadyProp)
+  readyCb.current = onReadyProp
   const el = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const showLoreRef = useRef<((id: string) => void) | null>(null)
@@ -277,6 +283,32 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
       const bounds = pts.reduce((b, p) => b.extend([p[0], p[1]]), new maplibregl.LngLatBounds(pts[0].slice(0, 2) as [number, number], pts[0].slice(0, 2) as [number, number]))
       map.fitBounds(bounds, { padding: { top: 120, bottom: 110, left: 40, right: 40 }, duration: 0 })
       const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+      // Satellite tiles take a moment on a cold load, and the flyover used to
+      // start on a timer regardless — so the whole cinematic could play out
+      // over an empty dark rectangle, which reads as broken rather than as
+      // loading. Wait for the imagery to land, then fly. The cap is there so a
+      // sulking tile server can't hold the camera for ever: after it, the
+      // flight happens anyway over whatever has arrived.
+      const READY_CAP_MS = 5000
+      let settled = false
+      const onReady = (fn: () => void) => {
+        const go = () => {
+          if (settled) return
+          settled = true
+          // 'ready' fades the imagery up; see .map.ready in globals.css. The
+          // map's own container is the reliable handle here; el.current is a
+          // fallback for the case where the map has already been torn down.
+          const container = (() => { try { return map.getContainer() } catch { return el.current } })()
+          container?.classList.add('ready')
+          try { window.clearTimeout(cap); map.off('idle', go) } catch { /* map already gone */ }
+          readyCb.current?.()
+          window.setTimeout(() => { if (mapRef.current) fn() }, reduce ? 0 : 700)
+        }
+        const cap = window.setTimeout(go, READY_CAP_MS)
+        map.on('idle', go)
+      }
+
       if (state.started && !state.finished) {
         // Land on the story, not on a hillside: sit behind them, looking the
         // way they are walking, with the last stretch of gold and the
@@ -291,10 +323,13 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         })()
         // Early on there is little walked line, so sit closer in.
         const zoom = km < 6 ? 12.4 : km < 16 ? 11.6 : 11.0
-        setTimeout(() => map.flyTo({ center: behind, zoom, pitch: terrainUrl ? 52 : 42, bearing: heading, duration: reduce ? 0 : 3400, essential: true }), reduce ? 0 : 2000)
+        onReady(() => map.flyTo({ center: behind, zoom, pitch: terrainUrl ? 52 : 42, bearing: heading, duration: reduce ? 0 : 3400, essential: true }))
       } else if (!state.started) {
         // Countdown: a slow push-in onto the start, so the relief shows
-        setTimeout(() => map.flyTo({ center: cut, zoom: 10.4, pitch: terrainUrl ? 50 : 35, bearing: -12, duration: reduce ? 0 : 4200, essential: true }), reduce ? 0 : 1800)
+        onReady(() => map.flyTo({ center: cut, zoom: 10.4, pitch: terrainUrl ? 50 : 35, bearing: -12, duration: reduce ? 0 : 4200, essential: true }))
+      } else {
+        // Finished: no flight, but the imagery still has to be faded up.
+        onReady(() => {})
       }
     })
     return () => { map.remove(); mapRef.current = null }

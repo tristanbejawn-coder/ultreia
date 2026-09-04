@@ -27,3 +27,8 @@ export function fmtDatePlus(ymd: string, days: number): string {
   const t = new Date(Date.UTC(y, m - 1, d + days, 12))
   return `${DAYS[t.getUTCDay()]} ${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]}`
 }
+
+// Place names as people say them: "Santiago", not "Santiago de Compostela".
+export function shortName(n?: string): string {
+  return (n || '').replace(' de Compostela', '').replace(' do Castelo', '')
+}
