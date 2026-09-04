@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#0E1418"/>
+  <!-- scallop: every groove runs to one point -->
+  <g fill="none" stroke="#F0B429" stroke-width="14" stroke-linecap="round">
+    <path d="M256 418 L96 200"/><path d="M256 418 L136 150"/><path d="M256 418 L190 118"/>
+    <path d="M256 418 L256 104"/><path d="M256 418 L322 118"/><path d="M256 418 L376 150"/><path d="M256 418 L416 200"/>
+  </g>
+  <path d="M96 200 Q256 40 416 200" fill="none" stroke="#F0B429" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="256" cy="418" r="16" fill="#F0B429"/>
+</svg>
