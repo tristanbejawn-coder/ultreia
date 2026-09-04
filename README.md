@@ -22,7 +22,9 @@ Without a database the site renders the route and countdown with no posts.
    `openssl rand -hex 24` output; those become the private posting links
    `/go/<token>`).
 2. Netlify → environment: `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
-   `SUPABASE_STORAGE_BUCKET` (the bucket from migration 001). Ju & Jit's site is
+   `SUPABASE_STORAGE_BUCKET` (the bucket from migration 001), `RESEND_API_KEY`
+   and `EMAIL_FROM` for sign-in links, `STRIPE_SECRET_KEY` and
+   `ULTREIA_ADMIN_EMAILS` for payments (see below). Ju & Jit's site is
    `jujitcamino` on Netlify, backed by the `ultreia_*` tables in the
    "We Out Here Photos" Supabase project.
 3. Route geometry: `npm run route:build` regenerates `src/data/segments/index.json`
