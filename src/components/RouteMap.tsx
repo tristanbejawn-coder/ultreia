@@ -152,7 +152,10 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
       // down when they'd collide with a photograph, with the walkers, or with
       // each other, so whatever is showing is always reachable.
       const TAP_PX = 34, CLEAR_PX = 32
-      const pop = new maplibregl.Popup({ closeButton: true, maxWidth: '272px', offset: 18, className: 'lore-pop' })
+      // closeOnClick would close the card on the very tap that opened it,
+      // because the card is opened from inside the map's own click. A tap on
+      // open ground closes it instead, just below.
+      const pop = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '272px', offset: 18, className: 'lore-pop' })
       type LoreMarker = { l: PlacedLore; el: HTMLElement; shown: boolean }
       const loreMarks: LoreMarker[] = []
       for (const l of placeLore(state.route.points.map(p => ({ lng: p[0], lat: p[1], km: p[2] })))) {
@@ -227,7 +230,11 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         }
         return best
       }
-      map.on('click', e => { const f = nearestLore(e.point); if (f) openLore(f) })
+      map.on('click', e => {
+        const f = nearestLore(e.point)
+        if (f) openLore(f)
+        else if (pop.isOpen()) pop.remove()
+      })
       map.on('mousemove', e => {
         const f = nearestLore(e.point)
         map.getCanvas().style.cursor = f ? 'pointer' : ''
