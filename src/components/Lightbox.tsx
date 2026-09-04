@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import type { ClientState } from '@/lib/walk'
 import { getName, setName } from '@/lib/me'
 import { fmtDate, fmtTime } from '@/lib/fmt'
+import { kmLabel } from './PicturesScreen'
 
 const EMOJI = ['❤️', '👏', '🥾', '🐚', '😂', '😮']
 
@@ -32,7 +33,7 @@ export default function Lightbox({ state, id, onClose }: { state: ClientState; i
   return (
     <div className="lb" role="dialog" aria-modal="true" aria-label={post.caption || 'Photo'}>
       <div className="lb-top">
-        <span className="label" style={{ color: '#9BA5AD' }}>{walker} · {seg ? `${seg.from} → ${seg.to}` : ''}{post.km != null ? ` · km ${post.km.toFixed(0)}` : ''}</span>
+        <span className="label" style={{ color: '#9BA5AD' }}>{walker} · {seg ? `${seg.from} → ${seg.to}` : ''}{post.km != null ? ` · ${kmLabel(post.km)}` : ''}</span>
         <button onClick={onClose} aria-label="Close">CLOSE ✕</button>
       </div>
       <div className="lb-media">

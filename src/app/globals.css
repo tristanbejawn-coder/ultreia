@@ -224,6 +224,16 @@ button.chip.fact:hover,button.chip.fact:focus-visible{border-color:var(--arrow);
 .share-block.quiet{opacity:.82}
 .big-btn.quiet{background:none;box-shadow:none;border-style:dashed}
 
+/* Saying where a picture was taken, when the picture itself won't say.
+   Towns, not coordinates: it is how a walker knows where they were. */
+.place{margin:12px 0 4px;padding:12px;background:var(--ground);border-radius:12px}
+.place .hint{margin:8px 0 10px;font-size:13px;color:var(--ink-2)}
+.place .towns{display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow:auto;margin-bottom:10px}
+.place .town{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:46px;padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;font:inherit;font-size:16px;color:var(--ink);text-align:left;cursor:pointer}
+.place .town span{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--ink-3)}
+.place .town.on{border-color:var(--arrow);box-shadow:inset 0 0 0 1px var(--arrow)}
+.place .town:active{background:var(--sunk)}
+
 .big-btn{display:flex;align-items:center;gap:14px;width:100%;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);padding:16px;margin:0 0 10px;text-align:left;cursor:pointer;border-radius:2px}
 .big-btn b{display:block;font-family:var(--display);font-stretch:62%;font-weight:900;text-transform:uppercase;font-size:22px;line-height:.95}
 .big-btn span{display:block;font-size:13.5px;color:var(--ink-2);margin-top:3px}

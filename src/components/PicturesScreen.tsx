@@ -6,9 +6,15 @@ import { fmtTime } from '@/lib/fmt'
 
 export default function PicturesScreen({ state }: { state: ClientState }) {
   const [open, setOpen] = useState<string | null>(null)
+  // The walk in the order it happened: stage one first, and within a stage
+  // the pictures in the order they were taken.
+  const byTime = (a: ClientState['posts'][number], b: ClientState['posts'][number]) =>
+    Date.parse(a.takenAt) - Date.parse(b.takenAt)
   const media = state.posts.filter(p => p.kind !== 'checkin' && p.kind !== 'ping' && p.kind !== 'note')
-  const groups = state.route.segments.map(s => ({ seg: s, posts: media.filter(p => p.segmentId === s.id) })).filter(g => g.posts.length).reverse()
-  const unplaced = media.filter(p => !p.segmentId)
+  const groups = state.route.segments
+    .map(s => ({ seg: s, posts: media.filter(p => p.segmentId === s.id).sort(byTime) }))
+    .filter(g => g.posts.length)
+  const unplaced = media.filter(p => !p.segmentId).sort(byTime)
   const walkers = Object.fromEntries(state.walk.walkers.map(w => [w.key, w.name]))
   return (
     <div className="pics">
@@ -38,6 +44,12 @@ export default function PicturesScreen({ state }: { state: ClientState }) {
   )
 }
 
+// Kilometres read as a place on the road, so they are shown whole; only in
+// the first ten does a decimal tell you anything.
+export function kmLabel(km: number): string {
+  return `km ${km < 10 ? km.toFixed(1) : km.toFixed(0)}`
+}
+
 function Tile({ p, who, tz, onOpen }: { p: ClientState['posts'][number]; who: string; tz: string; onOpen: () => void }) {
   const count = Object.values(p.reactions).reduce((a, b) => a + b, 0)
   const time = fmtTime(p.takenAt, tz)
@@ -46,7 +58,10 @@ function Tile({ p, who, tz, onOpen }: { p: ClientState['posts'][number]; who: st
       {p.kind === 'photo' && p.mediaUrl && <img src={p.mediaUrl} alt={p.caption || ''} loading="lazy" width={p.width || undefined} height={p.height || undefined} />}
       {(p.kind === 'clip' || p.kind === 'diary') && <video src={p.mediaUrl || undefined} poster={p.posterUrl || undefined} muted playsInline preload="metadata" />}
       {count > 0 && <span className="react">{count}</span>}
-      <div className="cap"><b>{who} · {time}{p.kind === 'diary' ? ' · diary' : ''}</b>{p.caption}</div>
+      <div className="cap">
+        <b>{who} · {time}{p.km != null ? ` · ${kmLabel(p.km)}` : ''}{p.kind === 'diary' ? ' · diary' : ''}</b>
+        {p.caption}
+      </div>
     </a>
   )
 }

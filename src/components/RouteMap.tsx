@@ -135,7 +135,11 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
           if (src) m.style.backgroundImage = `url("${src}")`
           m.style.transform = `rotate(${((i++ % 5) - 2) * 4}deg)`
         }
-        if (p.kind !== 'checkin' && p.kind !== 'ping' && onOpenPost) m.addEventListener('click', () => onOpenPost(p.id))
+        if (p.kind !== 'checkin' && p.kind !== 'ping' && onOpenPost) {
+          // stopPropagation: without it the tap reaches the map as well and
+          // the nearest fact opens behind the picture.
+          m.addEventListener('click', e => { e.stopPropagation(); onOpenPost(p.id) })
+        }
         layer(new maplibregl.Marker({ element: m, anchor: 'center' }).setLngLat(at).addTo(map), p.kind === 'checkin' || p.kind === 'ping' ? 2 : 4)
         occupied.push(m)
       }
