@@ -1,17 +1,6 @@
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { consumeLoginToken } from '@/lib/auth'
-import { dbConfigured } from '@/lib/db'
 
-export const dynamic = 'force-dynamic'
-
-// The link from the email lands here. One use, twenty minutes.
-export default async function Page({ params }: { params: Promise<{ token: string }> }) {
-  const { token } = await params
-  if (dbConfigured()) {
-    const email = await consumeLoginToken(token)
-    if (email) redirect('/account')
-  }
+export default function Page() {
   return (
     <main className="shell">
       <div className="signin-expired">

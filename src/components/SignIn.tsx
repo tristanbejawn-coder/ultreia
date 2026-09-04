@@ -71,7 +71,8 @@ export default function SignIn({ tileUrl, attribution, terrainUrl, line }: Props
         <div className="signin-tag">Your Camino, followed from home</div>
       </div>
 
-      <section className="signin-sheet">
+      <div className="signin-fade" aria-hidden="true" />
+      <section className="signin-form">
         {state === 'sent' ? (
           <>
             <div className="label gold">Check your email</div>
