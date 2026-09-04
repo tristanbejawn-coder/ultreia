@@ -8,6 +8,7 @@ import { useEffect, useRef } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { figuresSvg } from './Figures'
+import { LORE } from '@/data/lore'
 import type { ClientState } from '@/lib/walk'
 
 type Props = {
@@ -16,6 +17,12 @@ type Props = {
   attribution: string
   terrainUrl?: string | null
   onOpenPost?: (id: string) => void
+}
+
+// Rough metres between two lng/lat, good enough for "is this near the route".
+function distKm(a: [number, number], b: [number, number]): number {
+  const x = (a[0] - b[0]) * Math.cos((a[1] + b[1]) * Math.PI / 360), y = a[1] - b[1]
+  return Math.hypot(x, y) * 111.32
 }
 
 function pointAt(points: [number, number, number][], km: number): [number, number] {
@@ -97,6 +104,12 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
       }
       map.on('zoom', showLabels); map.on('move', showLabels); showLabels()
 
+      // Marker layering, bottom to top: facts, check-ins, photos, then them.
+      const layer = (m: maplibregl.Marker, z: number) => {
+        const w = m.getElement().parentElement as HTMLElement | null
+        if (w) w.style.zIndex = String(z)
+      }
+
       // Posts
       const located = state.posts.filter(p => p.km != null && (p.kind === 'photo' || p.kind === 'clip' || p.kind === 'diary' || p.kind === 'checkin' || p.kind === 'ping'))
       let i = 0
@@ -112,15 +125,46 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
           m.style.transform = `rotate(${((i++ % 5) - 2) * 4}deg)`
         }
         if (p.kind !== 'checkin' && p.kind !== 'ping' && onOpenPost) m.addEventListener('click', () => onOpenPost(p.id))
-        new maplibregl.Marker({ element: m, anchor: 'center' }).setLngLat(at).addTo(map)
+        layer(new maplibregl.Marker({ element: m, anchor: 'center' }).setLngLat(at).addTo(map), p.kind === 'checkin' || p.kind === 'ping' ? 2 : 4)
       }
+
+      // Facts standing on the ground they cross. Only the ones the chosen
+      // route passes near, so the Espiritual's monastery appears only if they
+      // take the boat. Quieter than a photo: a small ring, a card when tapped.
+      const pop = new maplibregl.Popup({ closeButton: false, maxWidth: '272px', offset: 14, className: 'lore-pop' })
+      const loreEls: HTMLElement[] = []
+      for (const l of LORE) {
+        let off = Infinity
+        for (const p of pts) { const d = distKm(l.at, [p[0], p[1]]); if (d < off) off = d; if (off < 0.4) break }
+        if (off > 5) continue
+        const m = document.createElement('button')
+        m.className = `mk-lore k-${l.kind}`
+        m.setAttribute('aria-label', l.title)
+        m.addEventListener('click', e => {
+          e.stopPropagation()
+          const card = document.createElement('div')
+          card.className = 'lore-card'
+          const h = document.createElement('h3'); h.textContent = l.title
+          const t = document.createElement('p'); t.textContent = l.text
+          card.append(h, t)
+          pop.setLngLat(l.at).setDOMContent(card).addTo(map)
+        })
+        layer(new maplibregl.Marker({ element: m, anchor: 'center' }).setLngLat(l.at).addTo(map), 1)
+        loreEls.push(m)
+      }
+      // They stay out of the way until the map is close enough to have room.
+      const showLore = () => {
+        const on = map.getZoom() >= 9.4
+        for (const m of loreEls) m.classList.toggle('on', on)
+      }
+      map.on('zoom', showLore); showLore()
 
       // The figures
       const f = document.createElement('div')
       if (state.walk.avatarUrl) { f.className = 'mk-them'; f.style.backgroundImage = `url("${state.walk.avatarUrl}")` }
       else { f.className = 'mk-figs'; f.innerHTML = figuresSvg(34, '#1B2430') }
       f.title = state.position.segment ? `${state.walk.name} · ${state.position.segment.name}` : state.walk.name
-      new maplibregl.Marker({ element: f, anchor: 'center' }).setLngLat(cut).addTo(map)
+      layer(new maplibregl.Marker({ element: f, anchor: 'center' }).setLngLat(cut).addTo(map), 6)
 
       // Camera: whole route first, then dive to them
       const bounds = pts.reduce((b, p) => b.extend([p[0], p[1]]), new maplibregl.LngLatBounds(pts[0].slice(0, 2) as [number, number], pts[0].slice(0, 2) as [number, number]))
