@@ -100,7 +100,9 @@ export default function RouteMap({ state, tileUrl, attribution, onOpenPost }: Pr
       }
 
       // The figures
-      const f = document.createElement('div'); f.className = 'mk-figs'; f.innerHTML = figuresSvg(34, '#1B2430')
+      const f = document.createElement('div')
+      if (state.walk.avatarUrl) { f.className = 'mk-them'; f.style.backgroundImage = `url("${state.walk.avatarUrl}")` }
+      else { f.className = 'mk-figs'; f.innerHTML = figuresSvg(34, '#1B2430') }
       f.title = state.position.segment ? `${state.walk.name} · ${state.position.segment.name}` : state.walk.name
       new maplibregl.Marker({ element: f, anchor: 'center' }).setLngLat(cut).addTo(map)
 

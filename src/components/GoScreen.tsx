@@ -99,7 +99,10 @@ export default function GoScreen({ token }: { token: string }) {
 
   return (
     <div className="go">
-      <div className="label">Buen Camino, {walker.name}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+        {state.walk.avatarUrl && <span className="avatar" style={{ backgroundImage: `url("${state.walk.avatarUrl}")` }} aria-hidden="true" />}
+        <div className="label">Buen Camino, {walker.name}</div>
+      </div>
       <h1>{state.finished ? 'You made it' : state.started ? `${toGo.toFixed(0)} km to go` : `${state.daysToGo} days to go`}</h1>
       <p className="sub">{seg ? `${seg.from} → ${seg.to} · ${seg.km} km` : state.walk.name}</p>
       {queued > 0 && <p className="queue">{queued} waiting for signal</p>}
@@ -113,7 +116,7 @@ export default function GoScreen({ token }: { token: string }) {
           </button>
           {seg && state.started && !state.finished && (
             <button className="big-btn" onClick={() => setMode('checkin')}>
-              <span className="ic"><Figures size={30} /></span>
+              {state.walk.avatarUrl ? <span className="avatar" style={{ backgroundImage: `url("${state.walk.avatarUrl}")` }} aria-hidden="true" /> : <span className="ic"><Figures size={30} /></span>}
               <span><b>We’re here</b><span>Mark today’s stage done{seg ? ` · ${seg.to}` : ''}</span></span>
             </button>
           )}

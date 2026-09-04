@@ -67,6 +67,6 @@ export async function storagePut(path: string, bytes: ArrayBuffer | Uint8Array, 
 
 export function publicUrl(path: string | null | undefined): string | null {
   if (!path) return null
-  if (/^https?:\/\//.test(path)) return path
+  if (/^https?:\/\//.test(path) || path.startsWith('/')) return path
   return `${URL_BASE}/storage/v1/object/public/${BUCKET}/${path}`
 }

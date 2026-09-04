@@ -61,6 +61,8 @@ img,video{max-width:100%;display:block}
 .count .l{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#C9D1D6;margin-top:8px}
 
 /* markers */
+.mk-them{width:48px;height:48px;border-radius:10px;border:3px solid #fff;background:#333 center/cover;box-shadow:0 0 0 4px rgba(240,180,41,.55),0 0 0 9px rgba(240,180,41,.18),0 8px 22px rgba(0,0,0,.55);cursor:default}
+.avatar{width:44px;height:44px;border-radius:10px;border:2px solid var(--surface);background:var(--sunk) center/cover;box-shadow:0 0 0 2px var(--arrow);flex:none}
 .mk-figs{width:44px;height:44px;border-radius:50%;background:#F0B429;box-shadow:0 0 0 4px rgba(240,180,41,.28),0 6px 18px rgba(0,0,0,.5);display:grid;place-items:center;cursor:default}
 .mk-figs svg{width:34px;height:34px}
 .mk-photo{width:36px;height:36px;border:2.5px solid #fff;border-radius:3px;box-shadow:0 3px 10px rgba(0,0,0,.55);background:#333 center/cover;cursor:pointer;transition:transform .15s}

@@ -10,6 +10,7 @@ export type Walker = { key: string; name: string }
 export type WalkRow = {
   id: string; slug: string; name: string; camino: string; start_node: string
   plan: string[]; walkers: Walker[]; starts_on: string | null; timezone: string; digest_hour: number
+  avatar_path: string | null
 }
 export type PostRow = {
   id: string; walker: string; kind: 'photo' | 'clip' | 'diary' | 'note' | 'checkin'
@@ -43,12 +44,12 @@ const DEMO_WALK: WalkRow = {
   id: 'demo', slug: 'ju-and-jit', name: 'Ju & Jit walk to Santiago', camino: 'portugues', start_node: 'porto',
   plan: CAMINOS.portugues.routes[0].plan,
   walkers: [{ key: 'ju', name: 'Ju' }, { key: 'jit', name: 'Jit' }],
-  starts_on: '2026-09-10', timezone: 'Europe/Lisbon', digest_hour: 19,
+  starts_on: '2026-09-10', timezone: 'Europe/Lisbon', digest_hour: 19, avatar_path: '/walks/ju-and-jit.jpg',
 }
 
 export async function getWalk(slug: string): Promise<WalkRow | null> {
   if (!dbConfigured()) return slug === DEMO_WALK.slug ? DEMO_WALK : null
-  const rows = await dbSelect<WalkRow>(`walks?slug=eq.${encodeURIComponent(slug)}&select=id,slug,name,camino,start_node,plan,walkers,starts_on,timezone,digest_hour&limit=1`)
+  const rows = await dbSelect<WalkRow>(`walks?slug=eq.${encodeURIComponent(slug)}&select=id,slug,name,camino,start_node,plan,walkers,starts_on,timezone,digest_hour,avatar_path&limit=1`)
   return rows[0] ?? null
 }
 
@@ -56,7 +57,7 @@ export async function getWalkByToken(token: string): Promise<{ walk: WalkRow; wa
   if (!dbConfigured()) return null
   const keys = await dbSelect<{ walk_id: string; walker: string }>(`walker_keys?token=eq.${encodeURIComponent(token)}&select=walk_id,walker&limit=1`)
   if (!keys[0]) return null
-  const rows = await dbSelect<WalkRow>(`walks?id=eq.${keys[0].walk_id}&select=id,slug,name,camino,start_node,plan,walkers,starts_on,timezone,digest_hour&limit=1`)
+  const rows = await dbSelect<WalkRow>(`walks?id=eq.${keys[0].walk_id}&select=id,slug,name,camino,start_node,plan,walkers,starts_on,timezone,digest_hour,avatar_path&limit=1`)
   const walk = rows[0]
   if (!walk) return null
   const walker = walk.walkers.find(w => w.key === keys[0].walker)
@@ -120,7 +121,7 @@ export function todaySegment(state: WalkState) {
 export function serialize(state: WalkState) {
   const seg = todaySegment(state)
   return {
-    walk: { slug: state.walk.slug, name: state.walk.name, walkers: state.walk.walkers, startsOn: state.walk.starts_on, digestHour: state.walk.digest_hour },
+    walk: { slug: state.walk.slug, name: state.walk.name, walkers: state.walk.walkers, startsOn: state.walk.starts_on, digestHour: state.walk.digest_hour, avatarUrl: publicUrl(state.walk.avatar_path) },
     route: {
       points: state.route.points.map(p => [p.lng, p.lat, +p.km.toFixed(3)] as [number, number, number]),
       totalKm: +state.route.totalKm.toFixed(1),

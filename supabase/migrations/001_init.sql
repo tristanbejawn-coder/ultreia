@@ -15,6 +15,7 @@ create table if not exists walks (
   starts_on     date,
   timezone      text not null default 'Europe/Lisbon',
   digest_hour   int  not null default 19,        -- when the day's messages are bundled
+  avatar_path   text,                            -- the walkers' picture: a storage path or a /public path
   owner_email   text,                            -- sign-in (magic link) for the product later
   paid          boolean not null default false,
   created_at    timestamptz not null default now()
