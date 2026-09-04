@@ -131,8 +131,13 @@ button.chip.fact:hover,button.chip.fact:focus-visible{border-color:var(--arrow);
 .avatar{width:44px;height:44px;border-radius:50%;border:2px solid var(--surface);background:var(--sunk) center/cover;box-shadow:0 0 0 2px var(--arrow);flex:none}
 .mk-figs{width:44px;height:44px;border-radius:50%;background:#F0B429;box-shadow:0 0 0 4px rgba(240,180,41,.28),0 6px 18px rgba(0,0,0,.5);display:grid;place-items:center;cursor:default}
 .mk-figs svg{width:34px;height:34px}
-.mk-photo{width:36px;height:36px;border:2.5px solid #fff;border-radius:3px;box-shadow:0 3px 10px rgba(0,0,0,.55);background:#333 center/cover;cursor:pointer;transition:transform .15s}
-.mk-photo:hover{transform:scale(1.12) rotate(0deg)!important;z-index:5}
+/* Never touch transform here: MapLibre positions a marker with its own
+   inline transform, and a hover rule that overrode it moved the print out
+   from under the cursor before the click could land — a photograph that
+   could be tapped by thumb but never clicked by mouse. Hover shows itself
+   in the border and the shadow instead. */
+.mk-photo{width:36px;height:36px;border:2.5px solid #fff;border-radius:3px;box-shadow:0 3px 10px rgba(0,0,0,.55);background:#333 center/cover;cursor:pointer;transition:box-shadow .15s,border-color .15s,filter .15s}
+.mk-photo:hover,.mk-photo:focus-visible{border-color:var(--arrow);box-shadow:0 4px 16px rgba(0,0,0,.65),0 0 0 4px rgba(240,180,41,.35);filter:brightness(1.06);outline:none}
 /* How many more are underneath this one. */
 .mk-photo .n{position:absolute;right:-7px;bottom:-7px;min-width:19px;height:19px;padding:0 4px;border-radius:10px;
   background:#1B2430;color:#fff;border:2px solid #fff;font-family:var(--mono);font-size:10px;line-height:15px;
