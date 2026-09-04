@@ -175,7 +175,7 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         // way they are walking, with the last stretch of gold and the
         // photographs on it filling the frame. Fixed scale beats fitting a
         // bounding box, which a 50-degree pitch throws off badly.
-        const behind = pointAt(pts, Math.max(0, km - 14))
+        const behind = pointAt(pts, Math.max(0, km - 9))
         const from = pointAt(pts, Math.max(0, km - 26))
         const heading = (() => {
           const dx = (cut[0] - from[0]) * Math.cos(cut[1] * Math.PI / 180), dy = cut[1] - from[1]
@@ -184,7 +184,7 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         })()
         // Early on there is little walked line, so sit closer in.
         const zoom = km < 6 ? 12.4 : km < 16 ? 11.6 : 11.0
-        setTimeout(() => map.flyTo({ center: behind, zoom, pitch: terrainUrl ? 52 : 42, bearing: heading, duration: reduce ? 0 : 3400, essential: true }), reduce ? 0 : 1400)
+        setTimeout(() => map.flyTo({ center: behind, zoom, pitch: terrainUrl ? 52 : 42, bearing: heading, duration: reduce ? 0 : 3400, essential: true }), reduce ? 0 : 2000)
       } else if (!state.started) {
         // Countdown: a slow push-in onto the start, so the relief shows
         setTimeout(() => map.flyTo({ center: cut, zoom: 10.4, pitch: terrainUrl ? 50 : 35, bearing: -12, duration: reduce ? 0 : 4200, essential: true }), reduce ? 0 : 1800)
