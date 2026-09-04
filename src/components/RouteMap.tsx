@@ -100,18 +100,17 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
       const showLabels = () => {
         const z = map.getZoom()
         for (const l of labels) {
-          const m = l.el.parentElement as HTMLElement | null   // the marker wrapper carries the transform
-          const under = m ? m.getBoundingClientRect().top - map.getContainer().getBoundingClientRect().top < 120 : false
+          const under = l.el.getBoundingClientRect().top - map.getContainer().getBoundingClientRect().top < 120
           l.el.style.display = (l.always || z >= 9.2) && !under ? '' : 'none'
         }
       }
       map.on('zoom', showLabels); map.on('move', showLabels); showLabels()
 
       // Marker layering, bottom to top: facts, check-ins, photos, then them.
-      const layer = (m: maplibregl.Marker, z: number) => {
-        const w = m.getElement().parentElement as HTMLElement | null
-        if (w) w.style.zIndex = String(z)
-      }
+      // MapLibre puts markers straight into the canvas container with no
+      // wrapper of their own, so this has to go on the element itself —
+      // anything set on the parent lands on the map surface.
+      const layer = (m: maplibregl.Marker, z: number) => { m.getElement().style.zIndex = String(z) }
       // Where the things a fact must not hide behind are standing.
       const occupied: [number, number][] = []
 
@@ -156,12 +155,7 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         const dot = document.createElement('i'); dot.className = 'dot'
         const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = l.label
         m.append(dot, tag)
-        const mk = new maplibregl.Marker({ element: m, anchor: 'center' }).setLngLat(l.at).addTo(map)
-        layer(mk, 1)
-        // MapLibre's own marker wrapper takes pointer events, and would eat
-        // the very taps aimed at the ring before the map ever sees them.
-        const wrap = mk.getElement().parentElement as HTMLElement | null
-        if (wrap) wrap.style.pointerEvents = 'none'
+        layer(new maplibregl.Marker({ element: m, anchor: 'center' }).setLngLat(l.at).addTo(map), 1)
         loreMarks.push({ l, el: m, shown: false })
       }
 
