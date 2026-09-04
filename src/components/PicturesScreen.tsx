@@ -6,7 +6,7 @@ import { fmtTime } from '@/lib/fmt'
 
 export default function PicturesScreen({ state }: { state: ClientState }) {
   const [open, setOpen] = useState<string | null>(null)
-  const media = state.posts.filter(p => p.kind !== 'checkin' && p.kind !== 'note')
+  const media = state.posts.filter(p => p.kind !== 'checkin' && p.kind !== 'ping' && p.kind !== 'note')
   const groups = state.route.segments.map(s => ({ seg: s, posts: media.filter(p => p.segmentId === s.id) })).filter(g => g.posts.length).reverse()
   const unplaced = media.filter(p => !p.segmentId)
   const walkers = Object.fromEntries(state.walk.walkers.map(w => [w.key, w.name]))

@@ -13,7 +13,7 @@ export type WalkRow = {
   avatar_path: string | null
 }
 export type PostRow = {
-  id: string; walker: string; kind: 'photo' | 'clip' | 'diary' | 'note' | 'checkin'
+  id: string; walker: string; kind: 'photo' | 'clip' | 'diary' | 'note' | 'checkin' | 'ping'
   caption: string | null; taken_at: string; lat: number | null; lng: number | null
   km: number | null; km_source: string | null; segment_id: string | null
   media_path: string | null; poster_path: string | null; width: number | null; height: number | null
@@ -29,7 +29,7 @@ export type WalkState = {
   choices: Record<string, string>
   posts: Post[]
   positionKm: number
-  positionSource: 'checkin' | 'post' | 'start'
+  positionSource: 'checkin' | 'ping' | 'post' | 'start'
   lastSeenAt: string | null
   started: boolean
   finished: boolean
@@ -102,7 +102,7 @@ export async function getWalkState(slug: string): Promise<WalkState | null> {
   let positionKm = 0, positionSource: WalkState['positionSource'] = 'start', lastSeenAt: string | null = null
   for (const p of posts) {
     if (p.km == null) continue
-    if (p.km > positionKm) { positionKm = p.km; positionSource = p.kind === 'checkin' ? 'checkin' : 'post' }
+    if (p.km > positionKm) { positionKm = p.km; positionSource = p.kind === 'checkin' ? 'checkin' : p.kind === 'ping' ? 'ping' : 'post' }
     if (!lastSeenAt || p.taken_at > lastSeenAt) lastSeenAt = p.taken_at
   }
   const today = localDate(walk.timezone)

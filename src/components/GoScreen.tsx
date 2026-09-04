@@ -75,6 +75,19 @@ export default function GoScreen({ token }: { token: string }) {
     drain(setQueued).then(load)
   }
 
+  const [pinging, setPinging] = useState(false)
+  async function whereWeAre() {
+    setPinging(true)
+    const h = await here()
+    if (!h) { setPinging(false); alert('The phone wouldn’t give its location. Check Location is allowed for this site in Settings.'); return }
+    const r = await fetch(`/api/go/${token}/checkin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(h) }).catch(() => null)
+    setPinging(false)
+    if (!r) { alert('No signal just now. Try again in a bit.'); return }
+    if (r.status === 422) { alert('You’re more than 5 km off the route, so this one isn’t placed.'); return }
+    if (!r.ok) { alert('That didn’t go through.'); return }
+    load()
+  }
+
   async function checkin(segmentId: string) {
     const r = await fetch(`/api/go/${token}/checkin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ segmentId }) }).catch(() => null)
     if (!r || !r.ok) { alert('That didn’t go through. Try again when there’s signal.'); return }
@@ -115,6 +128,12 @@ export default function GoScreen({ token }: { token: string }) {
             <span className="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#1B2430" strokeWidth="2"><rect x="3" y="7" width="18" height="13" rx="2" /><circle cx="12" cy="13.5" r="3.5" /><path d="M8 7l1.5-3h5L16 7" /></svg></span>
             <span><b>Post a photo</b><span>From the camera roll, with a line if you like</span></span>
           </button>
+          {state.started && !state.finished && (
+            <button className="big-btn" onClick={whereWeAre} disabled={pinging}>
+              <span className="ic" style={{ background: 'var(--sunk)' }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /><circle cx="12" cy="12" r="8" /></svg></span>
+              <span><b>{pinging ? 'Finding you…' : 'Where we are'}</b><span>One tap moves you on the family’s map</span></span>
+            </button>
+          )}
           {seg && state.started && !state.finished && (
             <button className="big-btn" onClick={() => setMode('checkin')}>
               {state.walk.avatarUrl ? <span className="avatar" style={{ backgroundImage: `url("${state.walk.avatarUrl}")` }} aria-hidden="true" /> : <span className="ic"><Figures size={30} /></span>}
@@ -132,6 +151,10 @@ export default function GoScreen({ token }: { token: string }) {
             <span><b>{tonight.length ? `${tonight.length} tonight` : 'The post'}</b><span>{tonight.length ? `Waiting for ${String(state.walk.digestHour).padStart(2, '0')}:00` : delivered.length ? `${delivered.length} read` : 'Nothing yet — they’ll write'}</span></span>
           </button>
         </>
+      )}
+
+      {mode === 'home' && (
+        <p className="label" style={{ marginTop: 18 }}><a href={state.walk.slug === 'ju-and-jit' ? '/' : `/w/${state.walk.slug}`} style={{ color: 'var(--azul)' }}>See what the family sees →</a></p>
       )}
 
       {mode === 'photo' && draft && (

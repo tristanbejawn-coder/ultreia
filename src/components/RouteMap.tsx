@@ -72,7 +72,7 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
     map.once('style.load', () => {
       map.addSource('ahead', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: ahead } } })
       map.addSource('walked', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: walked } } })
-      map.addLayer({ id: 'ahead-line', type: 'line', source: 'ahead', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#E4E7E4', 'line-width': 2.5, 'line-opacity': 0.72, 'line-dasharray': [0.2, 2.2] } })
+      map.addLayer({ id: 'ahead-line', type: 'line', source: 'ahead', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#F0B429', 'line-width': 2.5, 'line-opacity': 0.8, 'line-dasharray': [1.6, 1.8] } })
       map.addLayer({ id: 'walked-glow', type: 'line', source: 'walked', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#F0B429', 'line-width': 16, 'line-opacity': 0.28, 'line-blur': 6 } })
       map.addLayer({ id: 'walked-line', type: 'line', source: 'walked', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#F0B429', 'line-width': 4 } })
 
@@ -90,12 +90,12 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
       map.on('zoom', showLabels); showLabels()
 
       // Posts
-      const located = state.posts.filter(p => p.km != null && (p.kind === 'photo' || p.kind === 'clip' || p.kind === 'diary' || p.kind === 'checkin'))
+      const located = state.posts.filter(p => p.km != null && (p.kind === 'photo' || p.kind === 'clip' || p.kind === 'diary' || p.kind === 'checkin' || p.kind === 'ping'))
       let i = 0
       for (const p of located) {
         const at = pointAt(pts, p.km as number)
         let m: HTMLElement
-        if (p.kind === 'checkin') { m = document.createElement('div'); m.className = 'mk-checkin' }
+        if (p.kind === 'checkin' || p.kind === 'ping') { m = document.createElement('div'); m.className = 'mk-checkin' }
         else if (p.kind === 'diary') { m = document.createElement('button'); m.className = 'mk-diary'; m.setAttribute('aria-label', 'Diary entry') }
         else {
           m = document.createElement('button'); m.className = 'mk-photo'; m.setAttribute('aria-label', p.caption || 'Photo')
@@ -103,7 +103,7 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
           if (src) m.style.backgroundImage = `url("${src}")`
           m.style.transform = `rotate(${((i++ % 5) - 2) * 4}deg)`
         }
-        if (p.kind !== 'checkin' && onOpenPost) m.addEventListener('click', () => onOpenPost(p.id))
+        if (p.kind !== 'checkin' && p.kind !== 'ping' && onOpenPost) m.addEventListener('click', () => onOpenPost(p.id))
         new maplibregl.Marker({ element: m, anchor: 'center' }).setLngLat(at).addTo(map)
       }
 

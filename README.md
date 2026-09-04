@@ -34,3 +34,23 @@ Without a database the site renders the route and countdown with no posts.
 - `src/app/w/[slug]` — a walk's public pages (route, pictures, post). `/` is the default walk.
 - `src/app/go/[token]` — the walkers' private screen: post, check in, choose a fork.
 - `supabase/migrations` — schema; every table hangs off `walks`.
+
+## The walkers' links, and location
+
+Walkers don't log in. Each has a private link, `/go/<token>`, saved to the
+home screen. The tokens are the two rows in `walker_keys` (seeded by
+migration 002; make them with `openssl rand -hex 24`). To rotate a leaked
+link, insert a new row for that walker and delete the old one.
+
+Where the tile sits on the map comes from, in order of effort:
+
+1. **Photos** — placed from the picture's own location, or the phone's.
+2. **"Where we are"** — one tap on the walkers' screen sends the phone's
+   position; it becomes a `ping` and moves the tile.
+3. **"We're here"** — marks the end of a stage.
+4. **Always-on, optional** — the free OwnTracks app in HTTP mode, pointed at
+   `https://<site>/api/track/<token>`. It posts in the background; the
+   endpoint keeps a ping when they've moved ~300 m or 20 minutes have
+   passed, and ignores anything more than 5 km off the route.
+
+Browsers can't track in the background on iPhone; that is why 2 and 4 exist.

@@ -33,7 +33,7 @@ export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, b
   const toGo = Math.max(0, state.route.totalKm - state.position.km)
   const seg = state.position.segment
   const postsBySeg: Record<string, ClientState['posts']> = {}
-  for (const p of state.posts) if (p.segmentId && p.kind !== 'checkin') (postsBySeg[p.segmentId] ??= []).push(p)
+  for (const p of state.posts) if (p.segmentId && p.kind !== 'checkin' && p.kind !== 'ping') (postsBySeg[p.segmentId] ??= []).push(p)
   const walkers = state.walk.walkers.map(w => w.name).join(' & ')
   const doneCount = segs.filter(s => state.position.km >= s.endKm - 0.05).length
   const todayIndex = segs.findIndex(s => s.id === seg?.id)

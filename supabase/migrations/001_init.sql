@@ -45,13 +45,13 @@ create table if not exists posts (
   id          uuid primary key default gen_random_uuid(),
   walk_id     uuid not null references walks(id) on delete cascade,
   walker      text not null,
-  kind        text not null check (kind in ('photo','clip','diary','note','checkin')),
+  kind        text not null check (kind in ('photo','clip','diary','note','checkin','ping')),
   caption     text,
   taken_at    timestamptz not null default now(),
   lat         double precision,
   lng         double precision,
   km          double precision,                  -- snapped to the walk's route
-  km_source   text check (km_source in ('exif','device','checkin','manual')),
+  km_source   text check (km_source in ('exif','device','checkin','manual','tracker')),
   segment_id  text,
   media_path  text,                              -- storage object path (photos) or Stream uid (video)
   poster_path text,
