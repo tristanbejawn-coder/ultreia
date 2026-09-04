@@ -14,6 +14,22 @@ export default function SignIn({ tileUrl, attribution, terrainUrl, line }: Props
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
   const [devLink, setDevLink] = useState<string | null>(null)
+  const [mode, setMode] = useState<'following' | 'walking'>('walking')
+  const [code, setCode] = useState('')
+  const [codeState, setCodeState] = useState<'idle' | 'looking' | 'error'>('idle')
+  const [codeError, setCodeError] = useState<string | null>(null)
+
+  async function findWalk(e: React.FormEvent) {
+    e.preventDefault()
+    if (codeState === 'looking') return
+    setCodeState('looking'); setCodeError(null)
+    try {
+      const r = await fetch('/api/walk/find', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) { setCodeError(d.error || 'No walk with that code.'); setCodeState('error'); return }
+      window.location.href = d.url
+    } catch { setCodeError('No connection just now.'); setCodeState('error') }
+  }
 
   useEffect(() => {
     if (!el.current) return
@@ -84,19 +100,39 @@ export default function SignIn({ tileUrl, attribution, terrainUrl, line }: Props
             <button className="btn ghost block" onClick={() => setState('idle')}>Use a different address</button>
           </>
         ) : (
-          <form onSubmit={submit}>
-            <div className="label gold">Walking a Camino?</div>
-            <h1 className="display">Let them walk it with you</h1>
-            <p className="signin-lede">Your route on the map, your photos where you took them, their messages waiting each evening. One link home.</p>
-            <label className="signin-field">
-              <span className="label">Your email</span>
-              <input type="email" inputMode="email" autoComplete="email" autoCapitalize="none" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" />
-            </label>
-            {error && <p className="signin-error">{error}</p>}
-            <button className="btn block" type="submit" disabled={state === 'sending'}>{state === 'sending' ? 'Sending…' : 'Email me a sign-in link'}</button>
-            <p className="signin-small">No password. We email you a link that signs you in.</p>
-            <p className="signin-small muted">Just following someone? You don’t need any of this — only the link they sent you.</p>
-          </form>
+          <>
+            <div className="signin-switch" role="tablist" aria-label="Who are you">
+              <button type="button" role="tab" aria-selected={mode === 'walking'} className={mode === 'walking' ? 'on' : ''} onClick={() => setMode('walking')}>I’m walking</button>
+              <button type="button" role="tab" aria-selected={mode === 'following'} className={mode === 'following' ? 'on' : ''} onClick={() => setMode('following')}>I’m following</button>
+            </div>
+            {mode === 'walking' ? (
+              <form onSubmit={submit}>
+                <div className="label gold">Walking a Camino?</div>
+                <h1 className="display">Let them walk it with you</h1>
+                <p className="signin-lede">Your route on the map, your photos where you took them, their messages waiting each evening. One link home.</p>
+                <label className="signin-field">
+                  <span className="label">Your email</span>
+                  <input type="email" inputMode="email" autoComplete="email" autoCapitalize="none" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" />
+                </label>
+                {error && <p className="signin-error">{error}</p>}
+                <button className="btn block" type="submit" disabled={state === 'sending'}>{state === 'sending' ? 'Sending…' : 'Email me a sign-in link'}</button>
+                <p className="signin-small">No password. We email you a link that signs you in.</p>
+              </form>
+            ) : (
+              <form onSubmit={findWalk}>
+                <div className="label gold">Following someone?</div>
+                <h1 className="display">Walk it with them</h1>
+                <p className="signin-lede">If they sent you a link, just open it. Otherwise type the walk’s code — it’s a few letters they’ll have given you.</p>
+                <label className="signin-field">
+                  <span className="label">Walk code</span>
+                  <input type="text" inputMode="text" autoComplete="off" autoCapitalize="characters" spellCheck={false} required value={code} onChange={e => setCode(e.target.value.toUpperCase())} placeholder="JUJIT" className="code" />
+                </label>
+                {codeError && <p className="signin-error">{codeError}</p>}
+                <button className="btn block" type="submit" disabled={codeState === 'looking'}>{codeState === 'looking' ? 'Finding it…' : 'Take me there'}</button>
+                <p className="signin-small">No account, no password. You’ll give a name once, when you first write to them.</p>
+              </form>
+            )}
+          </>
         )}
       </section>
     </main>
