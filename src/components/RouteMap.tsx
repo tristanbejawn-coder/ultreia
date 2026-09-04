@@ -14,6 +14,7 @@ type Props = {
   state: ClientState
   tileUrl: string
   attribution: string
+  terrainUrl?: string | null
   onOpenPost?: (id: string) => void
 }
 
@@ -31,7 +32,7 @@ function pointAt(points: [number, number, number][], km: number): [number, numbe
   return [l[0], l[1]]
 }
 
-export default function RouteMap({ state, tileUrl, attribution, onOpenPost }: Props) {
+export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOpenPost }: Props) {
   const el = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
 
@@ -48,11 +49,18 @@ export default function RouteMap({ state, tileUrl, attribution, onOpenPost }: Pr
       container: el.current,
       style: {
         version: 8,
-        sources: { sat: { type: 'raster', tiles: [tileUrl], tileSize: 256, attribution, maxzoom: 18 } },
+        sources: {
+          sat: { type: 'raster', tiles: [tileUrl], tileSize: 256, attribution, maxzoom: 18 },
+          ...(terrainUrl ? { dem: { type: 'raster-dem', tiles: [terrainUrl], tileSize: 256, encoding: 'terrarium', maxzoom: 14 } } : {}),
+        },
         layers: [
           { id: 'bg', type: 'background', paint: { 'background-color': '#0E1418' } },
           { id: 'sat', type: 'raster', source: 'sat', paint: { 'raster-saturation': -0.25, 'raster-brightness-max': 0.85, 'raster-contrast': 0.05 } },
+          // A soft hillshade over the imagery gives the coast its cliffs and
+          // Galicia its hills without turning the map into a game.
+          ...(terrainUrl ? [{ id: 'shade', type: 'hillshade' as const, source: 'dem', paint: { 'hillshade-exaggeration': 0.35, 'hillshade-shadow-color': '#06090C', 'hillshade-highlight-color': '#E4E7E4', 'hillshade-accent-color': '#0E1418' } }] : []),
         ],
+        ...(terrainUrl ? { terrain: { source: 'dem', exaggeration: 1.35 } } : {}),
       },
       center: cut, zoom: 8, pitch: 0, attributionControl: false,
       cooperativeGestures: true,
@@ -108,10 +116,10 @@ export default function RouteMap({ state, tileUrl, attribution, onOpenPost }: Pr
 
       // Camera: whole route first, then dive to them
       const bounds = pts.reduce((b, p) => b.extend([p[0], p[1]]), new maplibregl.LngLatBounds(pts[0].slice(0, 2) as [number, number], pts[0].slice(0, 2) as [number, number]))
-      map.fitBounds(bounds, { padding: { top: 90, bottom: 120, left: 40, right: 40 }, duration: 0 })
+      map.fitBounds(bounds, { padding: { top: 120, bottom: 110, left: 40, right: 40 }, duration: 0 })
       const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
       if (state.started && !state.finished) {
-        setTimeout(() => map.flyTo({ center: cut, zoom: 11.5, pitch: 45, bearing: -15, duration: reduce ? 0 : 3200, essential: true }), reduce ? 0 : 1400)
+        setTimeout(() => map.flyTo({ center: cut, zoom: 11.6, pitch: terrainUrl ? 58 : 45, bearing: -18, duration: reduce ? 0 : 3400, essential: true }), reduce ? 0 : 1400)
       }
     })
     return () => { map.remove(); mapRef.current = null }

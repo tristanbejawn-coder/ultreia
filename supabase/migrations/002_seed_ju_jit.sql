@@ -10,7 +10,7 @@ values (
   'porto',
   -- Default plan: the full Coastal. Forks at Caminha and Pontevedra can
   -- change this as they go, from the posting screen.
-  '["porto-matosinhos","matosinhos-vila-do-conde","vila-do-conde-esposende","esposende-viana","viana-caminha","caminha-boat-a-guarda","a-guarda-a-ramallosa","a-ramallosa-vigo","vigo-redondela","redondela-pontevedra","pontevedra-caldas","caldas-padron","padron-santiago"]',
+  '["porto-vila-do-conde","vila-do-conde-esposende","esposende-viana","viana-caminha","caminha-boat-a-guarda","a-guarda-a-ramallosa","a-ramallosa-vigo","vigo-redondela","redondela-pontevedra","pontevedra-caldas","caldas-padron","padron-santiago"]',
   '[{"key":"ju","name":"Ju"},{"key":"jit","name":"Jit"}]',
   '2026-09-10',
   '/walks/ju-and-jit.jpg'

@@ -121,7 +121,7 @@ export function todaySegment(state: WalkState) {
 export function serialize(state: WalkState) {
   const seg = todaySegment(state)
   return {
-    walk: { slug: state.walk.slug, name: state.walk.name, walkers: state.walk.walkers, startsOn: state.walk.starts_on, digestHour: state.walk.digest_hour, avatarUrl: publicUrl(state.walk.avatar_path) },
+    walk: { slug: state.walk.slug, name: state.walk.name, walkers: state.walk.walkers, startsOn: state.walk.starts_on, digestHour: state.walk.digest_hour, avatarUrl: publicUrl(state.walk.avatar_path), timezone: state.walk.timezone },
     route: {
       points: state.route.points.map(p => [p.lng, p.lat, +p.km.toFixed(3)] as [number, number, number]),
       totalKm: +state.route.totalKm.toFixed(1),

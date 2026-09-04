@@ -7,6 +7,7 @@ import Figures from './Figures'
 import { readExif } from '@/lib/exif'
 import { enqueue, drain, all } from '@/lib/queue'
 import type { ClientState } from '@/lib/walk'
+import { fmtDate } from '@/lib/fmt'
 
 type Bundle = { id: string; from_name: string; body: string; written_at: string; delivered_at: string | null }[]
 type Me = { walker: { key: string; name: string }; state: ClientState; bundle: Bundle }
@@ -176,7 +177,7 @@ export default function GoScreen({ token }: { token: string }) {
           <h2>{tonight.length ? `${tonight.length} tonight` : 'The post'}</h2>
           {tonight.length > 0 && <p className="label">Arrives all at once at {String(state.walk.digestHour).padStart(2, '0')}:00</p>}
           <div className="msgs">
-            {delivered.map(m => <div className="msg" key={m.id}><div className="who"><span>{m.from_name}</span><span>{new Date(m.written_at).toLocaleDateString('en-GB', { weekday: 'short' })}</span></div><p>{m.body}</p></div>)}
+            {delivered.map(m => <div className="msg" key={m.id}><div className="who"><span>{m.from_name}</span><span>{fmtDate(m.written_at, state.walk.timezone)}</span></div><p>{m.body}</p></div>)}
             {!delivered.length && <p className="empty" style={{ padding: '20px 0' }}>Nothing delivered yet.</p>}
           </div>
           <div className="row"><button className="btn ghost" onClick={() => setMode('home')}>Back</button></div>

@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import type { ClientState } from '@/lib/walk'
 import { getName, setName } from '@/lib/me'
+import { fmtDate, fmtTime } from '@/lib/fmt'
 
 const EMOJI = ['❤️', '👏', '🥾', '🐚', '😂', '😮']
 
@@ -18,7 +19,7 @@ export default function Lightbox({ state, id, onClose }: { state: ClientState; i
   if (!post) return null
   const walker = state.walk.walkers.find(w => w.key === post.walker)?.name || post.walker
   const seg = state.route.segments.find(s => s.id === post.segmentId)
-  const when = new Date(post.takenAt).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  const when = `${fmtDate(post.takenAt, state.walk.timezone)} ${fmtTime(post.takenAt, state.walk.timezone)}`
 
   async function react(emoji: string) {
     let name = getName()

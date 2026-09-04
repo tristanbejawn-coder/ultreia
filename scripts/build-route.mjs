@@ -31,8 +31,7 @@ const UA = 'ultreia-route-builder/0.1 (camino walk tracker; contact via github t
 const COSTA = 6100606, CENTRAL = 12786090, ESPIRITUAL = 6259246   // CENTRAL: 'Caminho Português de Santiago', Coimbra → Santiago
 const SOURCES = {
   // Coastal: whole relations (rel-<id>.json) or Costa ways clipped near Porto
-  'porto-matosinhos':         { rel: [COSTA, 9044581, 17600329], bbox: [41.13, -8.72, 41.20, -8.58] },
-  'matosinhos-vila-do-conde': { rel: [17600329, 18091699] },
+  'porto-vila-do-conde':      { rel: [COSTA, 9044581, 17600329, 18091699], bbox: [41.13, -8.72, 41.20, -8.58] },
   'vila-do-conde-esposende':  { rel: [18091819, 18165121] },
   'esposende-viana':          { rel: [18165121] },
   'viana-caminha':            { rel: [18168169] },
@@ -43,8 +42,7 @@ const SOURCES = {
   'pontevedra-armenteira':    { rel: [ESPIRITUAL] },
   'armenteira-vilanova':      { rel: [ESPIRITUAL] },
   // Central: ways fetched in chunks per country box (see scripts/raw/central-chunks-*)
-  'valenca-tui':              { central: 'es' },
-  'tui-o-porrino':            { central: 'es' },
+  'valenca-o-porrino':        { central: 'es' },
   'o-porrino-redondela':      { central: 'es' },
   'redondela-pontevedra':     { central: 'es' },
   'pontevedra-caldas':        { central: 'es' },
@@ -194,7 +192,7 @@ function stitchOnce(ways, from, to, bridge) {
 function stitch(ways, from, to) {
   const dist = (a, b) => Math.hypot((a[0] - b[0]) * Math.cos(a[1] * Math.PI / 180), a[1] - b[1])
   let best = [], bestScore = Infinity
-  for (const bridge of [0.002, 0.008, 0.02, 0.04]) {
+  for (const bridge of [0.002, 0.008, 0.02, 0.04, 0.06]) {
     const line = stitchOnce(ways, from, to, bridge)
     if (line.length < 2) continue
     const score = dist(line[0], from) + dist(line[line.length - 1], to)

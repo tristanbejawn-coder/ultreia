@@ -90,8 +90,7 @@ const nodes: Node[] = [
 
 const segments: Segment[] = [
   // ---- Coastal (Caminho da Costa / Senda Litoral interleave) ----
-  { id: 'porto-matosinhos',        from: 'porto',         to: 'matosinhos',    km: 11,   name: 'Porto → Matosinhos',          character: 'Down the Douro to the sea; flat, tiled, busy' },
-  { id: 'matosinhos-vila-do-conde',from: 'matosinhos',    to: 'vila-do-conde', km: 17.5, name: 'Matosinhos → Vila do Conde',  character: 'Boardwalks and beaches all the way; flat, exposed' },
+  { id: 'porto-vila-do-conde',     from: 'porto',         to: 'vila-do-conde', km: 28.5, name: 'Porto → Vila do Conde',       character: 'Down the Douro to the sea, then boardwalks and beaches all the way; flat, long, exposed' },
   { id: 'vila-do-conde-esposende', from: 'vila-do-conde', to: 'esposende',     km: 23.7, name: 'Vila do Conde → Esposende',   character: 'Beach, then dunes and pine; flat' },
   { id: 'esposende-viana',         from: 'esposende',     to: 'viana',         km: 26.3, name: 'Esposende → Viana do Castelo',character: 'Inland through villages, one real hill, then the Lima bridge', ascent: 350 },
   { id: 'viana-caminha',           from: 'viana',         to: 'caminha',       km: 26.6, name: 'Viana → Caminha',             character: 'Cliff paths and fishing villages; the Minho appears', ascent: 300 },
@@ -102,8 +101,7 @@ const segments: Segment[] = [
   { id: 'vigo-redondela',          from: 'vigo',          to: 'redondela',     km: 15,   name: 'Vigo → Redondela',            character: 'The Senda da Auga above the ría; short and green', ascent: 250 },
   // Fork at Caminha — option B: the river to Valença, then the Central
   { id: 'caminha-valenca',         from: 'caminha',       to: 'valenca',       km: 28,   name: 'Caminha → Valença',           character: 'Riverside ecovia along the Minho; flat and quiet, Vila Nova de Cerveira halfway', stages: ['Vila Nova de Cerveira'] },
-  { id: 'valenca-tui',             from: 'valenca',       to: 'tui',           km: 4,    name: 'Valença → Tui',               character: 'The iron bridge into Spain; the cathedral stamp' },
-  { id: 'tui-o-porrino',           from: 'tui',           to: 'o-porrino',     km: 16,   name: 'Tui → O Porriño',             character: 'Woods, then an industrial estate best walked early' },
+  { id: 'valenca-o-porrino',       from: 'valenca',       to: 'o-porrino',     km: 20,   name: 'Valença → O Porriño',         character: 'The iron bridge into Spain and Tui’s cathedral stamp, then woods and an industrial estate best walked early' },
   { id: 'o-porrino-redondela',     from: 'o-porrino',     to: 'redondela',     km: 15.5, name: 'O Porriño → Redondela',       character: 'Over the hill at Mos; the first view of the ría', ascent: 300 },
   // Shared to Pontevedra
   { id: 'redondela-pontevedra',    from: 'redondela',     to: 'pontevedra',    km: 19.5, name: 'Redondela → Pontevedra',      character: 'The Ponte Sampaio and a stony climb; the old town at the end', ascent: 300 },
@@ -154,7 +152,7 @@ const forks: Fork[] = [
         chain: ['caminha-boat-a-guarda','a-guarda-a-ramallosa','a-ramallosa-vigo','vigo-redondela'],
         summary: 'Three more days of Atlantic: Oia, Baiona, the Ría de Vigo. Depends on the boat running.', km: 73, days: 3 },
       { id: 'inland', label: 'Follow the river to Valença, then the Central',
-        chain: ['caminha-valenca','valenca-tui','tui-o-porrino','o-porrino-redondela'],
+        chain: ['caminha-valenca','valenca-o-porrino','o-porrino-redondela'],
         summary: 'Flat riverside to Valença, cross to Tui, then the classic road with more pilgrims and albergues.', km: 63.5, days: 3 },
     ],
   },
@@ -176,13 +174,13 @@ const forks: Fork[] = [
 ]
 
 const coastalPlan: SegmentId[] = [
-  'porto-matosinhos','matosinhos-vila-do-conde','vila-do-conde-esposende','esposende-viana','viana-caminha',
+  'porto-vila-do-conde','vila-do-conde-esposende','esposende-viana','viana-caminha',
   'caminha-boat-a-guarda','a-guarda-a-ramallosa','a-ramallosa-vigo','vigo-redondela',
   'redondela-pontevedra','pontevedra-caldas','caldas-padron','padron-santiago',
 ]
 const centralPlan: SegmentId[] = [
   'porto-vilarinho','vilarinho-rates','rates-barcelos','barcelos-ponte-de-lima','ponte-de-lima-rubiaes','rubiaes-valenca',
-  'valenca-tui','tui-o-porrino','o-porrino-redondela','redondela-pontevedra','pontevedra-caldas','caldas-padron','padron-santiago',
+  'valenca-o-porrino','o-porrino-redondela','redondela-pontevedra','pontevedra-caldas','caldas-padron','padron-santiago',
 ]
 
 export const PORTUGUES: Camino = {
