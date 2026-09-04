@@ -7,15 +7,12 @@ import Link from 'next/link'
 import RouteMap from './RouteMap'
 import Lightbox from './Lightbox'
 import ShareSheet, { type OwnerLinks } from './ShareSheet'
+import WelcomeSheet, { hasSeenWelcome, markWelcomeSeen } from './WelcomeSheet'
 import type { ClientState } from '@/lib/walk'
 import { placeLore } from '@/lib/lore'
-import { fmtDatePlus, fmtTime } from '@/lib/fmt'
+import { fmtDatePlus, fmtTime, shortName } from '@/lib/fmt'
 
 type Props = { state: ClientState; tileUrl: string; attribution: string; terrainUrl?: string | null; base: string; ownerLinks?: OwnerLinks | null; publicUrl: string }
-
-function shortName(n?: string): string {
-  return (n || '').replace(' de Compostela', '').replace(' do Castelo', '')
-}
 
 function plannedDate(startsOn: string | null, index: number): string | null {
   return startsOn ? fmtDatePlus(startsOn, index) : null
@@ -24,6 +21,17 @@ function plannedDate(startsOn: string | null, index: number): string | null {
 export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, base, ownerLinks, publicUrl }: Props) {
   const [open, setOpen] = useState<string | null>(null)
   const [share, setShare] = useState<'closed' | 'open' | 'welcome'>('closed')
+  // Someone arriving from a friend's link has no idea what this is. Say so
+  // once, over the map, then never again on this device.
+  const [intro, setIntro] = useState(false)
+  const [pending, setPending] = useState(false)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    // The paid-owner welcome owns the first moment; don't stack two sheets.
+    if (new URLSearchParams(window.location.search).has('welcome')) return
+    if (!hasSeenWelcome(state.walk.slug)) setPending(true)
+  }, [state.walk.slug])
+  const closeIntro = () => { markWelcomeSeen(state.walk.slug); setIntro(false) }
   // A fact chosen from a stage card. The counter makes choosing the same one
   // twice still send the map back to it.
   const [focusLore, setFocusLore] = useState<{ id: string; n: number } | null>(null)
@@ -69,7 +77,8 @@ export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, b
   return (
     <>
       <section className="hero">
-        <RouteMap state={state} tileUrl={tileUrl} attribution={attribution} terrainUrl={terrainUrl} onOpenPost={setOpen} focusLore={focusLore} />
+        <RouteMap state={state} tileUrl={tileUrl} attribution={attribution} terrainUrl={terrainUrl} onOpenPost={setOpen} focusLore={focusLore}
+          onReady={() => { if (pending) { setPending(false); setIntro(true) } }} />
         <div className="hero-top">
           <div className="hero-title">
             <span className="hero-who">
@@ -78,6 +87,9 @@ export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, b
             </span>
             <span className="hero-name">{shortName(segs[0]?.from)} → {shortName(segs[segs.length - 1]?.to)}</span>
           </div>
+          <button className="hero-info" onClick={() => setIntro(true)} aria-label="What is this?">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 11v5.5M12 7.6v.9" /></svg>
+          </button>
           <button className="hero-share" onClick={() => setShare('open')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12 3v12M8 7l4-4 4 4M5 14v5h14v-5" /></svg>
             <span>Share</span>
@@ -181,6 +193,7 @@ export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, b
       </section>
 
       {open && <Lightbox state={state} id={open} onClose={() => setOpen(null)} />}
+      {intro && <WelcomeSheet state={state} onClose={closeIntro} />}
       {share !== 'closed' && <ShareSheet name={state.walk.name} publicUrl={publicUrl} code={state.walk.code} ownerLinks={ownerLinks} welcome={share === 'welcome'} onClose={() => setShare('closed')} />}
     </>
   )

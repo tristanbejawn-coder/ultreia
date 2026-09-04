@@ -17,6 +17,9 @@ type Props = {
   attribution: string
   terrainUrl?: string | null
   onOpenPost?: (id: string) => void
+  // Fired once the satellite imagery has landed, so anything that talks about
+  // what's on the map can wait until there is a map to talk about.
+  onReady?: () => void
   // A fact chosen from the stage card in the sheet: fly to it and open it.
   focusLore?: { id: string; n: number } | null
 }
@@ -41,7 +44,10 @@ function pointAt(points: [number, number, number][], km: number): [number, numbe
   return [l[0], l[1]]
 }
 
-export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOpenPost, focusLore }: Props) {
+export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOpenPost, onReady: onReadyProp, focusLore }: Props) {
+  // Kept in a ref so a changing callback never re-runs the map's setup effect.
+  const readyCb = useRef(onReadyProp)
+  readyCb.current = onReadyProp
   const el = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const showLoreRef = useRef<((id: string) => void) | null>(null)
@@ -115,6 +121,25 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
       // coordinates: with terrain on, a marker is drawn at its ground
       // elevation, tens of pixels from where the flat projection puts it, so
       // anything measuring where a marker really is has to read the DOM.
+      // MapLibre's gesture handling cancels the browser's synthetic click on
+      // a tap, so a marker that only listens for 'click' is dead to a thumb —
+      // which is exactly what the photographs were. Listen for the touch
+      // itself, and treat it as a tap only if the finger barely moved.
+      const onTap = (el: HTMLElement, fn: () => void) => {
+        let sx = 0, sy = 0, t0 = 0
+        el.addEventListener('click', fn)
+        el.addEventListener('touchstart', e => {
+          const t = e.changedTouches[0]; sx = t.clientX; sy = t.clientY; t0 = Date.now()
+        }, { passive: true })
+        el.addEventListener('touchend', e => {
+          const t = e.changedTouches[0]
+          if (Date.now() - t0 > 600 || Math.hypot(t.clientX - sx, t.clientY - sy) > 12) return
+          e.preventDefault()          // and no synthetic click after it
+          e.stopPropagation()
+          fn()
+        })
+      }
+
       const occupied: HTMLElement[] = []
       const centreOf = (e: HTMLElement, box: DOMRect) => {
         const r = e.getBoundingClientRect()
@@ -137,7 +162,7 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
           m.style.transform = `rotate(${((i++ % 5) - 2) * 4}deg)`
         }
         if (p.kind !== 'checkin' && p.kind !== 'ping' && onOpenPost) {
-          m.addEventListener('click', () => onOpenPost(p.id))
+          onTap(m, () => onOpenPost(p.id))
           pictures.push(m)
         }
         layer(new maplibregl.Marker({ element: m, anchor: 'center' }).setLngLat(at).addTo(map), p.kind === 'checkin' || p.kind === 'ping' ? 2 : 4)
@@ -208,7 +233,9 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
       // because the card is opened from inside the map's own click. A tap on
       // open ground closes it instead, just below.
       const pop = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '272px', offset: 18, className: 'lore-pop' })
-      type LoreMarker = { l: PlacedLore; el: HTMLElement; shown: boolean }
+      // dot, not el: once a name is showing, the element is far wider than
+      // the ring, and its centre is not where anyone aims.
+      type LoreMarker = { l: PlacedLore; el: HTMLElement; dot: HTMLElement; shown: boolean }
       const loreMarks: LoreMarker[] = []
       for (const l of placeLore(state.route.points.map(p => ({ lng: p[0], lat: p[1], km: p[2] })))) {
         const m = document.createElement('div')
@@ -218,13 +245,13 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = l.label
         m.append(dot, tag)
         layer(new maplibregl.Marker({ element: m, anchor: 'center' }).setLngLat(l.at).addTo(map), 1)
-        loreMarks.push({ l, el: m, shown: false })
+        loreMarks.push({ l, el: m, dot, shown: false })
       }
 
       const openLore = (f: LoreMarker) => {
         // Hang the card below the ring when the ring is high on the screen,
         // above it when it is low, so it never runs off the top.
-        const y = centreOf(f.el, map.getContainer().getBoundingClientRect()).y
+        const y = centreOf(f.dot, map.getContainer().getBoundingClientRect()).y
         pop.options.anchor = y < map.getContainer().clientHeight * 0.45 ? 'top' : 'bottom'
         const card = document.createElement('div')
         card.className = 'lore-card'
@@ -254,7 +281,7 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         for (const f of loreMarks) {
           let show = on
           if (show) {
-            const at = centreOf(f.el, box)
+            const at = centreOf(f.dot, box)
             for (const t of taken) if (Math.hypot(at.x - t.x, at.y - t.y) < CLEAR_PX) { show = false; break }
             if (show) taken.push(at)
           }
@@ -276,13 +303,16 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         const box = map.getContainer().getBoundingClientRect()
         for (const f of loreMarks) {
           if (!f.shown) continue
-          const at = centreOf(f.el, box)
+          const at = centreOf(f.dot, box)
           const d = Math.hypot(at.x - pt.x, at.y - pt.y)
           if (d < bestD) { bestD = d; best = f }
         }
         return best
       }
       map.on('click', e => {
+        // A tap that landed on a photograph belongs to the photograph.
+        const t = e.originalEvent?.target as HTMLElement | null
+        if (t && typeof t.closest === 'function' && t.closest('.mk-photo,.mk-diary,.mk-them')) return
         const f = nearestLore(e.point)
         if (f) openLore(f)
         else if (pop.isOpen()) pop.remove()
@@ -307,6 +337,32 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
       const bounds = pts.reduce((b, p) => b.extend([p[0], p[1]]), new maplibregl.LngLatBounds(pts[0].slice(0, 2) as [number, number], pts[0].slice(0, 2) as [number, number]))
       map.fitBounds(bounds, { padding: { top: 120, bottom: 110, left: 40, right: 40 }, duration: 0 })
       const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+      // Satellite tiles take a moment on a cold load, and the flyover used to
+      // start on a timer regardless — so the whole cinematic could play out
+      // over an empty dark rectangle, which reads as broken rather than as
+      // loading. Wait for the imagery to land, then fly. The cap is there so a
+      // sulking tile server can't hold the camera for ever: after it, the
+      // flight happens anyway over whatever has arrived.
+      const READY_CAP_MS = 5000
+      let settled = false
+      const onReady = (fn: () => void) => {
+        const go = () => {
+          if (settled) return
+          settled = true
+          // 'ready' fades the imagery up; see .map.ready in globals.css. The
+          // map's own container is the reliable handle here; el.current is a
+          // fallback for the case where the map has already been torn down.
+          const container = (() => { try { return map.getContainer() } catch { return el.current } })()
+          container?.classList.add('ready')
+          try { window.clearTimeout(cap); map.off('idle', go) } catch { /* map already gone */ }
+          readyCb.current?.()
+          window.setTimeout(() => { if (mapRef.current) fn() }, reduce ? 0 : 700)
+        }
+        const cap = window.setTimeout(go, READY_CAP_MS)
+        map.on('idle', go)
+      }
+
       if (state.started && !state.finished) {
         // Land on the story, not on a hillside: sit behind them, looking the
         // way they are walking, with the last stretch of gold and the
@@ -321,10 +377,13 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         })()
         // Early on there is little walked line, so sit closer in.
         const zoom = km < 6 ? 12.4 : km < 16 ? 11.6 : 11.0
-        setTimeout(() => map.flyTo({ center: behind, zoom, pitch: terrainUrl ? 52 : 42, bearing: heading, duration: reduce ? 0 : 3400, essential: true }), reduce ? 0 : 2000)
+        onReady(() => map.flyTo({ center: behind, zoom, pitch: terrainUrl ? 52 : 42, bearing: heading, duration: reduce ? 0 : 3400, essential: true }))
       } else if (!state.started) {
         // Countdown: a slow push-in onto the start, so the relief shows
-        setTimeout(() => map.flyTo({ center: cut, zoom: 10.4, pitch: terrainUrl ? 50 : 35, bearing: -12, duration: reduce ? 0 : 4200, essential: true }), reduce ? 0 : 1800)
+        onReady(() => map.flyTo({ center: cut, zoom: 10.4, pitch: terrainUrl ? 50 : 35, bearing: -12, duration: reduce ? 0 : 4200, essential: true }))
+      } else {
+        // Finished: no flight, but the imagery still has to be faded up.
+        onReady(() => {})
       }
     })
     return () => { map.remove(); mapRef.current = null }

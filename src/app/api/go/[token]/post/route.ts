@@ -39,6 +39,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ token: string 
     return NextResponse.json({ error: 'no file' }, { status: 400 })
   }
 
+  // Where it goes on the line: the photograph's own location, the phone's,
+  // or — when a picture carries neither and the walker said so themselves —
+  // a kilometre they chose from the list of towns.
+  const said = Number(form.get('km'))
   let km: number | null = null, segmentId: string | null = null
   if (isFinite(lat) && isFinite(lng)) {
     const choices = await getChoices(auth.walk.id)
@@ -46,7 +50,16 @@ export async function POST(req: Request, ctx: { params: Promise<{ token: string 
     const snap = snapToRoute(route, [lng, lat])
     if (snap.offKm <= 3) { km = +snap.km.toFixed(2); segmentId = snap.segment } // >3 km off route: a day trip, leave unplaced
     if (!kmSource) kmSource = 'device'
-  } else { lat = NaN; lng = NaN }
+  } else {
+    lat = NaN; lng = NaN
+    if (isFinite(said)) {
+      const choices = await getChoices(auth.walk.id)
+      const route = buildRoute(auth.walk.camino, auth.walk.plan, choices)
+      km = +Math.max(0, Math.min(route.totalKm, said)).toFixed(2)
+      segmentId = route.segmentStarts.find(s => km! >= s.km && km! <= s.endKm)?.id ?? null
+      kmSource = 'manual'
+    }
+  }
 
   const [row] = await dbInsert('ultreia_posts', {
     walk_id: auth.walk.id, walker: auth.walker.key, kind, caption,

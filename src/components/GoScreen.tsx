@@ -37,7 +37,8 @@ export default function GoScreen({ token }: { token: string }) {
   const fileRef = useRef<HTMLInputElement>(null)
 
   // photo draft
-  const [draft, setDraft] = useState<{ url: string; blob: Blob; width: number; height: number; lat: number | null; lng: number | null; kmSource: string; takenAt: string } | null>(null)
+  const [draft, setDraft] = useState<{ url: string; blob: Blob; width: number; height: number; lat: number | null; lng: number | null; km: number | null; kmSource: string; takenAt: string } | null>(null)
+  const [placing, setPlacing] = useState(false)
   const [caption, setCaption] = useState('')
 
   const load = useCallback(async () => {
@@ -64,14 +65,14 @@ export default function GoScreen({ token }: { token: string }) {
     const { blob, width, height } = await shrink(f)
     let lat = ex.lat, lng = ex.lng, kmSource = 'exif'
     if (lat == null || lng == null) { const h = await here(); if (h) { lat = h.lat; lng = h.lng; kmSource = 'device' } else kmSource = '' }
-    setDraft({ url: URL.createObjectURL(blob), blob, width, height, lat, lng, kmSource, takenAt: (ex.takenAt || new Date()).toISOString() })
-    setCaption(''); setMode('photo')
+    setDraft({ url: URL.createObjectURL(blob), blob, width, height, lat, lng, km: null, kmSource, takenAt: (ex.takenAt || new Date()).toISOString() })
+    setCaption(''); setPlacing(false); setMode('photo')
   }
 
   async function post() {
     if (!draft) return
-    await enqueue({ id: crypto.randomUUID(), token, kind: 'photo', blob: draft.blob, caption, takenAt: draft.takenAt, lat: draft.lat, lng: draft.lng, kmSource: draft.kmSource, width: draft.width, height: draft.height, createdAt: Date.now(), tries: 0 })
-    setDraft(null); setMode('home')
+    await enqueue({ id: crypto.randomUUID(), token, kind: 'photo', blob: draft.blob, caption, takenAt: draft.takenAt, lat: draft.lat, lng: draft.lng, km: draft.km, kmSource: draft.kmSource, width: draft.width, height: draft.height, createdAt: Date.now(), tries: 0 })
+    setDraft(null); setPlacing(false); setMode('home')
     drain(setQueued).then(load)
   }
 
@@ -181,9 +182,48 @@ export default function GoScreen({ token }: { token: string }) {
           <img className="pv" src={draft.url} alt="" />
           <label>A line for it</label>
           <textarea value={caption} onChange={e => setCaption(e.target.value)} maxLength={600} placeholder="First proper sun…" rows={2} />
-          <p className="label" style={{ marginTop: 10 }}>{draft.kmSource === 'exif' ? 'Placed from the photo’s location' : draft.kmSource === 'device' ? 'Placed where you are now' : 'No location — will sit at your last check-in'}</p>
+
+          {/* Where it lands on the family's map. Some phones hand the browser
+              a copy of a picture with its location stripped, so there is
+              always a way to say where it was by hand. */}
+          <div className="place">
+            <div className="label">
+              {draft.kmSource === 'exif' ? 'Placed from the photo’s own location'
+                : draft.kmSource === 'device' ? 'Placed where you are now'
+                : draft.kmSource === 'manual' ? `Placed by you · km ${draft.km?.toFixed(0)}`
+                : 'This picture carries no location'}
+            </div>
+            {!placing ? (
+              <button type="button" className="btn small ghost" onClick={() => setPlacing(true)}>
+                {draft.kmSource && draft.kmSource !== 'manual' ? 'Place it myself' : 'Say where it was'}
+              </button>
+            ) : (
+              <>
+                <p className="hint">Nearest town on the road. It goes on the line there.</p>
+                <div className="towns">
+                  {state.route.segments.map(sg => (
+                    <button key={sg.id} type="button" className={`town${draft.kmSource === 'manual' && draft.km === sg.km ? ' on' : ''}`}
+                      onClick={() => { setDraft(d => d && ({ ...d, km: sg.km, kmSource: 'manual', lat: null, lng: null })); setPlacing(false) }}>
+                      {sg.from}<span>km {sg.km.toFixed(0)}</span>
+                    </button>
+                  ))}
+                  {(() => {
+                    const last = state.route.segments[state.route.segments.length - 1]
+                    return last ? (
+                      <button type="button" className={`town${draft.kmSource === 'manual' && draft.km === last.endKm ? ' on' : ''}`}
+                        onClick={() => { setDraft(d => d && ({ ...d, km: last.endKm, kmSource: 'manual', lat: null, lng: null })); setPlacing(false) }}>
+                        {last.to}<span>km {last.endKm.toFixed(0)}</span>
+                      </button>
+                    ) : null
+                  })()}
+                </div>
+                <button type="button" className="btn small ghost" onClick={() => setPlacing(false)}>Never mind</button>
+              </>
+            )}
+          </div>
+
           <div className="row">
-            <button className="btn ghost" onClick={() => { setDraft(null); setMode('home') }}>Cancel</button>
+            <button className="btn ghost" onClick={() => { setDraft(null); setPlacing(false); setMode('home') }}>Cancel</button>
             <button className="btn" onClick={post}>Post</button>
           </div>
         </div>

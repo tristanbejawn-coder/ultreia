@@ -8,6 +8,7 @@ export type QueuedPost = {
   id: string; token: string; kind: 'photo' | 'note'
   blob: Blob | null; caption: string; takenAt: string
   lat: number | null; lng: number | null; kmSource: string
+  km: number | null            // set when the walker placed it by hand
   width: number | null; height: number | null; createdAt: number; tries: number
 }
 
@@ -37,6 +38,7 @@ export async function drain(onChange?: (left: number) => void): Promise<void> {
     fd.append('kind', it.kind); fd.append('caption', it.caption); fd.append('takenAt', it.takenAt)
     if (it.lat != null && it.lng != null) { fd.append('lat', String(it.lat)); fd.append('lng', String(it.lng)) }
     fd.append('kmSource', it.kmSource)
+    if (it.km != null) fd.append('km', String(it.km))
     if (it.width) fd.append('width', String(it.width)); if (it.height) fd.append('height', String(it.height))
     try {
       const res = await fetch(`/api/go/${it.token}/post`, { method: 'POST', body: fd })
