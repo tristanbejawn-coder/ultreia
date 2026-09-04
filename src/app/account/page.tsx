@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { currentOwner } from '@/lib/auth'
 import { dbConfigured, dbSelect } from '@/lib/db'
 import { fmtDatePlus } from '@/lib/fmt'
+import { ensureWebhook, isAdmin, priceLabel, stripeConfigured, stripeTestMode, type WebhookStatus } from '@/lib/stripe'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,7 +11,7 @@ type WalkRow = { id: string; slug: string; name: string; code: string | null; wa
 type KeyRow = { walk_id: string; walker: string; token: string }
 
 // Signed in: your walks, with the two kinds of link for each.
-export default async function Page({ searchParams }: { searchParams: Promise<{ error?: string; cancelled?: string }> }) {
+export default async function Page({ searchParams }: { searchParams: Promise<{ error?: string; cancelled?: string; stripe?: string }> }) {
   const sp = await searchParams
   if (!dbConfigured()) redirect('/sign-in')
   const owner = await currentOwner()
@@ -18,6 +19,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
   const walks = await dbSelect<WalkRow>(`ultreia_walks?owner_email=eq.${encodeURIComponent(owner.email)}&select=id,slug,name,code,walkers,starts_on,paid&order=created_at.desc`)
   const keys = walks.length ? await dbSelect<KeyRow>(`ultreia_walker_keys?walk_id=in.(${walks.map(w => w.id).join(',')})&select=walk_id,walker,token`) : []
   const site = process.env.VAPID_SUBJECT || 'https://jujitcamino.netlify.app'
+  const admin = isAdmin(owner.email)
+  let webhook: WebhookStatus | null = null
+  let stripeError: string | null = null
+  if (admin && stripeConfigured()) {
+    try { webhook = await ensureWebhook(site, false) } catch (e) { stripeError = (e as Error).message }
+  }
 
   return (
     <main className="shell account">
@@ -31,6 +38,28 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
 
       {sp.error && <p className="notice warn" style={{ margin: '0 0 14px' }}>{sp.error}</p>}
       {sp.cancelled && <p className="notice" style={{ margin: '0 0 14px' }}>Payment cancelled. Your walk is saved as a draft below.</p>}
+      {sp.stripe === 'ready' && <p className="notice" style={{ margin: '0 0 14px' }}>Stripe is wired up. Walks go live the moment they’re paid.</p>}
+      {admin && (
+        <section className="walk-card admin">
+          <div className="label">Admin · payments{stripeConfigured() ? (stripeTestMode() ? ' · test mode' : ' · live') : ''}</div>
+          <h2 className="display">Stripe</h2>
+          <div className="link-row">
+            <div className="label">Secret key</div>
+            <p>{stripeConfigured() ? `Present in Netlify. Price ${priceLabel()} per walk.` : 'Missing. Add STRIPE_SECRET_KEY (a restricted key: Checkout Sessions write, Webhook Endpoints write) to Netlify, then redeploy.'}</p>
+          </div>
+          <div className="link-row">
+            <div className="label">Webhook</div>
+            {stripeError ? <p className="notice warn">Stripe said: {stripeError}</p>
+              : !webhook ? <p>Waiting for the key.</p>
+              : webhook.registered && webhook.secretStored ? <p>Registered at <span className="mono">{webhook.url.replace('https://', '')}</span> for {webhook.events?.length} events.</p>
+              : webhook.registered ? <p>An endpoint exists but its signing secret isn’t stored here. Register again to replace it.</p>
+              : <p>Not registered yet. One click does it; the signing secret stays on the server.</p>}
+          </div>
+          {stripeConfigured() && !stripeError && !(webhook?.registered && webhook.secretStored) && (
+            <form action="/api/stripe/setup" method="post"><button className="btn" type="submit">Register the webhook</button></form>
+          )}
+        </section>
+      )}
       <Link className="cta" href="/new">
         <span><b>Set up a walk</b><span>Which Camino, who’s walking, when. Then pay once and get your links.</span></span>
       </Link>

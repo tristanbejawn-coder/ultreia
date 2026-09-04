@@ -62,9 +62,15 @@ Browsers can't track in the background on iPhone; that is why 2 and 4 exist.
 
 One-off payment per walk through Stripe Checkout. `STRIPE_SECRET_KEY` should
 be a **restricted key** (`rk_`) with only: Checkout Sessions — write,
-Webhook Endpoints — write (if the endpoint is created programmatically).
-Fulfilment happens in `/api/stripe/webhook` on `checkout.session.completed`
-and `checkout.session.async_payment_succeeded`, gated on `payment_status`;
-set `STRIPE_WEBHOOK_SECRET` from the endpoint's signing secret. Keys live in
-Netlify's environment only; `.githooks/pre-commit` (enable with
-`git config core.hooksPath .githooks`) refuses a commit containing one.
+Webhook Endpoints — write. Fulfilment happens in `/api/stripe/webhook` on
+`checkout.session.completed` and `checkout.session.async_payment_succeeded`,
+gated on `payment_status`.
+
+The webhook endpoint registers itself: sign in as an address listed in
+`ULTREIA_ADMIN_EMAILS`, open `/account`, and press **Register the webhook**.
+That creates the endpoint on the Stripe account behind the key and keeps
+the signing secret in `ultreia_settings` (service role only). Pasting a
+`STRIPE_WEBHOOK_SECRET` into Netlify instead also works and takes
+precedence. Keys live in Netlify's environment only; `.githooks/pre-commit`
+(enable with `git config core.hooksPath .githooks`) refuses a commit
+containing one.

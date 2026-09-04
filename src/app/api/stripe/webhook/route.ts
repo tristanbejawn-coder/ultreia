@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { dbUpdate } from '@/lib/db'
-import { stripe, stripeConfigured } from '@/lib/stripe'
+import { stripe, stripeConfigured, webhookSecret } from '@/lib/stripe'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 // session's payment_status is not 'unpaid'. The return page verifies too,
 // as a convenience, never as the only path.
 export async function POST(req: Request) {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET
+  const secret = stripeConfigured() ? await webhookSecret() : null
   if (!stripeConfigured() || !secret) return NextResponse.json({ error: 'webhook not configured' }, { status: 503 })
   const sig = req.headers.get('stripe-signature') || ''
   const body = await req.text()
