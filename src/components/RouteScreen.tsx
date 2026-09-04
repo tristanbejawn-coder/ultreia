@@ -8,6 +8,7 @@ import RouteMap from './RouteMap'
 import Lightbox from './Lightbox'
 import ShareSheet, { type OwnerLinks } from './ShareSheet'
 import type { ClientState } from '@/lib/walk'
+import { placeLore } from '@/lib/lore'
 import { fmtDatePlus, fmtTime } from '@/lib/fmt'
 
 type Props = { state: ClientState; tileUrl: string; attribution: string; terrainUrl?: string | null; base: string; ownerLinks?: OwnerLinks | null; publicUrl: string }
@@ -23,6 +24,13 @@ function plannedDate(startsOn: string | null, index: number): string | null {
 export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, base, ownerLinks, publicUrl }: Props) {
   const [open, setOpen] = useState<string | null>(null)
   const [share, setShare] = useState<'closed' | 'open' | 'welcome'>('closed')
+  // A fact chosen from a stage card. The counter makes choosing the same one
+  // twice still send the map back to it.
+  const [focusLore, setFocusLore] = useState<{ id: string; n: number } | null>(null)
+  const goToLore = (id: string) => {
+    setFocusLore(f => ({ id, n: (f?.n ?? 0) + 1 }))
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
   useEffect(() => {
     // Straight from paying: let the flyover land first, then the links.
     if (typeof window === 'undefined' || !new URLSearchParams(window.location.search).has('welcome')) return
@@ -45,6 +53,15 @@ export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, b
   const dayNo = state.walk.startsOn && state.started && seg ? todayIndex + 1 : null
 
   // Stages to list: walked ones newest first, plus today's; before day one, the first three
+  // What stands on the ground of each stage, for the cards below. The
+  // serialised route carries kilometres, not segment ids, so a fact lands on
+  // the stage whose stretch of kilometres contains it.
+  const loreBySeg: Record<string, ReturnType<typeof placeLore>> = {}
+  for (const l of placeLore(state.route.points.map(p => ({ lng: p[0], lat: p[1], km: p[2] })))) {
+    const seg = segs.find(x => l.km >= x.km - 0.05 && l.km <= x.endKm + 0.05)
+    if (seg) (loreBySeg[seg.id] ??= []).push(l)
+  }
+
   const listed = state.started
     ? segs.filter((s, i) => i <= Math.max(todayIndex, 0) || state.position.km >= s.km - 0.05).reverse()
     : segs.slice(0, 3)
@@ -52,7 +69,7 @@ export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, b
   return (
     <>
       <section className="hero">
-        <RouteMap state={state} tileUrl={tileUrl} attribution={attribution} terrainUrl={terrainUrl} onOpenPost={setOpen} />
+        <RouteMap state={state} tileUrl={tileUrl} attribution={attribution} terrainUrl={terrainUrl} onOpenPost={setOpen} focusLore={focusLore} />
         <div className="hero-top">
           <div className="hero-title">
             <span className="hero-who">
@@ -137,7 +154,14 @@ export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, b
                   </span>
                   <span className="row-km tnum">{(s.endKm - s.km).toFixed(0)}<span> km</span></span>
                 </Link>
-                <div className="chip-row"><span className="chip">{s.character}</span></div>
+                <div className="chip-row">
+                  <span className="chip">{s.character}</span>
+                  {(loreBySeg[s.id] || []).map(l => (
+                    <button key={l.id} type="button" className="chip fact" onClick={() => goToLore(l.id)}>
+                      <span className="dot" aria-hidden="true" />{l.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )
           })}

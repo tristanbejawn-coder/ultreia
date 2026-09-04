@@ -8,7 +8,7 @@ import { useEffect, useRef } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { figuresSvg } from './Figures'
-import { LORE } from '@/data/lore'
+import { placeLore, type PlacedLore } from '@/lib/lore'
 import type { ClientState } from '@/lib/walk'
 
 type Props = {
@@ -17,6 +17,8 @@ type Props = {
   attribution: string
   terrainUrl?: string | null
   onOpenPost?: (id: string) => void
+  // A fact chosen from the stage card in the sheet: fly to it and open it.
+  focusLore?: { id: string; n: number } | null
 }
 
 // Rough metres between two lng/lat, good enough for "is this near the route".
@@ -39,9 +41,10 @@ function pointAt(points: [number, number, number][], km: number): [number, numbe
   return [l[0], l[1]]
 }
 
-export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOpenPost }: Props) {
+export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOpenPost, focusLore }: Props) {
   const el = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
+  const showLoreRef = useRef<((id: string) => void) | null>(null)
 
   useEffect(() => {
     if (!el.current || mapRef.current) return
@@ -144,15 +147,15 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
       // each other, so whatever is showing is always reachable.
       const TAP_PX = 34, CLEAR_PX = 32
       const pop = new maplibregl.Popup({ closeButton: true, maxWidth: '272px', offset: 18, className: 'lore-pop' })
-      type LoreMarker = { l: (typeof LORE)[number]; el: HTMLElement; shown: boolean }
+      type LoreMarker = { l: PlacedLore; el: HTMLElement; shown: boolean }
       const loreMarks: LoreMarker[] = []
-      for (const l of LORE) {
-        let off = Infinity
-        for (const p of pts) { const d = distKm(l.at, [p[0], p[1]]); if (d < off) off = d; if (off < 0.4) break }
-        if (off > 5) continue
+      for (const l of placeLore(state.route.points.map(p => ({ lng: p[0], lat: p[1], km: p[2] })))) {
         const m = document.createElement('div')
         m.className = `mk-lore k-${l.kind}`
         m.title = l.title
+        const dot = document.createElement('i'); dot.className = 'dot'
+        const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = l.label
+        m.append(dot, tag)
         layer(new maplibregl.Marker({ element: m, anchor: 'center' }).setLngLat(l.at).addTo(map), 1)
         loreMarks.push({ l, el: m, shown: false })
       }
@@ -167,23 +170,31 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         for (const o of loreMarks) o.el.classList.toggle('open', o === f)
         pop.once('close', () => f.el.classList.remove('open'))
       }
+      // Chosen from the sheet: bring the map to it, then open it.
+      showLoreRef.current = (id: string) => {
+        const f = loreMarks.find(x => x.l.id === id)
+        if (!f) return
+        const reduceM = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        map.flyTo({ center: f.l.at, zoom: Math.max(map.getZoom(), 13), pitch: 30, duration: reduceM ? 0 : 1600, essential: true })
+        map.once('moveend', () => openLore(f))
+      }
 
-      // Which facts can be seen — and therefore tapped — right now.
-      const placeLore = () => {
-        const on = map.getZoom() >= 9.4
+      // Which facts can be seen — and therefore tapped — right now. Names
+      // appear once the map is close enough to have room for them.
+      const placeMarks = () => {
+        const z = map.getZoom()
+        const on = z >= 9.4, named = z >= 11.6
         const taken = occupied.map(c => map.project(c))
         for (const f of loreMarks) {
           let show = on
           if (show) {
             const at = map.project(f.l.at)
-            for (const t of taken) {
-              const near = Math.hypot(at.x - t.x, at.y - t.y)
-              if (near < CLEAR_PX) { show = false; break }
-            }
-            if (show) { taken.push(at) }
+            for (const t of taken) if (Math.hypot(at.x - t.x, at.y - t.y) < CLEAR_PX) { show = false; break }
+            if (show) taken.push(at)
           }
           f.shown = show
           f.el.classList.toggle('on', show)
+          f.el.classList.toggle('named', show && named)
         }
       }
       // A tap opens the nearest fact within a thumb's width of where it landed.
@@ -203,7 +214,7 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         map.getCanvas().style.cursor = f ? 'pointer' : ''
         for (const o of loreMarks) o.el.classList.toggle('near', o === f)
       })
-      map.on('move', placeLore); map.on('zoom', placeLore); placeLore()
+      map.on('move', placeMarks); map.on('zoom', placeMarks); placeMarks()
 
       // The figures
       const f = document.createElement('div')
@@ -239,6 +250,10 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
     return () => { map.remove(); mapRef.current = null }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (focusLore && showLoreRef.current) showLoreRef.current(focusLore.id)
+  }, [focusLore])
 
   return <div ref={el} className="map" role="region" aria-label="Route map" />
 }
