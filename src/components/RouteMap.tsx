@@ -149,6 +149,7 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
       // Posts
       const located = state.posts.filter(p => p.km != null && (p.kind === 'photo' || p.kind === 'clip' || p.kind === 'diary' || p.kind === 'checkin' || p.kind === 'ping'))
       let i = 0
+      const pictures: HTMLElement[] = []
       for (const p of located) {
         const at = pointAt(pts, p.km as number)
         let m: HTMLElement
@@ -160,10 +161,61 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
           if (src) m.style.backgroundImage = `url("${src}")`
           m.style.transform = `rotate(${((i++ % 5) - 2) * 4}deg)`
         }
-        if (p.kind !== 'checkin' && p.kind !== 'ping' && onOpenPost) onTap(m, () => onOpenPost(p.id))
+        if (p.kind !== 'checkin' && p.kind !== 'ping' && onOpenPost) {
+          onTap(m, () => onOpenPost(p.id))
+          pictures.push(m)
+        }
         layer(new maplibregl.Marker({ element: m, anchor: 'center' }).setLngLat(at).addTo(map), p.kind === 'checkin' || p.kind === 'ping' ? 2 : 4)
         occupied.push(m)
       }
+
+      // A day's walking is a few pixels wide when the whole route is on
+      // screen, so photographs land on top of one another: the pile looks
+      // like a pile but only its top print can be tapped, and the ones
+      // underneath are unreachable at any zoom. So a print that would cover
+      // one already standing stands down and hands it its count instead —
+      // the same rule the facts below follow. Whatever is showing is
+      // tappable, and the lightbox pages through the rest.
+      const PILE_PX = 30, THEM_PX = 34
+      // Filled in when the figures go on, below; they sit above the prints
+      // and are wider than one, so a print under them can't be tapped either.
+      let them: HTMLElement | null = null
+      const showPictures = () => {
+        const box = map.getContainer().getBoundingClientRect()
+        const themAt = them && them.isConnected ? centreOf(them, box) : null
+        const standing: { x: number; y: number; el: HTMLElement; n: number }[] = []
+        const underThem: { x: number; y: number; el: HTMLElement }[] = []
+
+        // First the prints that are in the clear: the first one to claim a
+        // patch keeps it, and anything landing on top of it stands down.
+        for (const el of pictures) {
+          el.style.display = ''
+          const c = centreOf(el, box)
+          if (themAt && Math.hypot(themAt.x - c.x, themAt.y - c.y) < THEM_PX) { underThem.push({ ...c, el }); continue }
+          const over = standing.find(s => Math.hypot(s.x - c.x, s.y - c.y) < PILE_PX)
+          if (over) { el.style.display = 'none'; over.n++ }
+          else standing.push({ x: c.x, y: c.y, el, n: 1 })
+        }
+
+        // Then the ones the figures are covering, handed to whichever print
+        // is nearest. Deferred rather than folded in above because the newest
+        // photograph is always at the walkers' feet, so it would otherwise be
+        // the one print left standing underneath them.
+        for (const u of underThem) {
+          if (!standing.length) { continue }   // nothing better to give it to
+          u.el.style.display = 'none'
+          standing.reduce((a, b) => Math.hypot(a.x - u.x, a.y - u.y) <= Math.hypot(b.x - u.x, b.y - u.y) ? a : b).n++
+        }
+
+        for (const s of standing) {
+          const badge = s.el.querySelector('.n') as HTMLElement | null
+          if (s.n > 1) {
+            if (badge) badge.textContent = String(s.n)
+            else { const b = document.createElement('span'); b.className = 'n'; b.textContent = String(s.n); s.el.appendChild(b) }
+          } else if (badge) badge.remove()
+        }
+      }
+      map.on('zoom', showPictures); map.on('move', showPictures); map.on('idle', showPictures)
 
       // Facts standing on the ground they cross. Only the ones the chosen
       // route passes near, so the Espiritual's monastery appears only if they
@@ -278,6 +330,8 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
       else { f.className = 'mk-figs'; f.innerHTML = figuresSvg(34, '#1B2430') }
       f.title = state.position.segment ? `${state.walk.name} · ${state.position.segment.name}` : state.walk.name
       layer(new maplibregl.Marker({ element: f, anchor: 'center' }).setLngLat(cut).addTo(map), 6)
+      them = f
+      showPictures()
 
       // Camera: whole route first, then dive to them
       const bounds = pts.reduce((b, p) => b.extend([p[0], p[1]]), new maplibregl.LngLatBounds(pts[0].slice(0, 2) as [number, number], pts[0].slice(0, 2) as [number, number]))
