@@ -17,6 +17,9 @@ type Props = {
   attribution: string
   terrainUrl?: string | null
   onOpenPost?: (id: string) => void
+  // Fired once the satellite imagery has landed, so anything that talks about
+  // what's on the map can wait until there is a map to talk about.
+  onReady?: () => void
   // A fact chosen from the stage card in the sheet: fly to it and open it.
   focusLore?: { id: string; n: number } | null
 }
@@ -41,7 +44,10 @@ function pointAt(points: [number, number, number][], km: number): [number, numbe
   return [l[0], l[1]]
 }
 
-export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOpenPost, focusLore }: Props) {
+export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOpenPost, onReady: onReadyProp, focusLore }: Props) {
+  // Kept in a ref so a changing callback never re-runs the map's setup effect.
+  const readyCb = useRef(onReadyProp)
+  readyCb.current = onReadyProp
   const el = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const showLoreRef = useRef<((id: string) => void) | null>(null)
@@ -266,10 +272,13 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         const go = () => {
           if (settled) return
           settled = true
-          window.clearTimeout(cap)
-          map.off('idle', go)
-          // 'ready' fades the imagery up; see .map.ready in globals.css.
-          map.getContainer().classList.add('ready')
+          // 'ready' fades the imagery up; see .map.ready in globals.css. The
+          // map's own container is the reliable handle here; el.current is a
+          // fallback for the case where the map has already been torn down.
+          const container = (() => { try { return map.getContainer() } catch { return el.current } })()
+          container?.classList.add('ready')
+          try { window.clearTimeout(cap); map.off('idle', go) } catch { /* map already gone */ }
+          readyCb.current?.()
           window.setTimeout(() => { if (mapRef.current) fn() }, reduce ? 0 : 700)
         }
         const cap = window.setTimeout(go, READY_CAP_MS)
