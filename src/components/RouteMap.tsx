@@ -115,6 +115,25 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
       // coordinates: with terrain on, a marker is drawn at its ground
       // elevation, tens of pixels from where the flat projection puts it, so
       // anything measuring where a marker really is has to read the DOM.
+      // MapLibre's gesture handling cancels the browser's synthetic click on
+      // a tap, so a marker that only listens for 'click' is dead to a thumb —
+      // which is exactly what the photographs were. Listen for the touch
+      // itself, and treat it as a tap only if the finger barely moved.
+      const onTap = (el: HTMLElement, fn: () => void) => {
+        let sx = 0, sy = 0, t0 = 0
+        el.addEventListener('click', fn)
+        el.addEventListener('touchstart', e => {
+          const t = e.changedTouches[0]; sx = t.clientX; sy = t.clientY; t0 = Date.now()
+        }, { passive: true })
+        el.addEventListener('touchend', e => {
+          const t = e.changedTouches[0]
+          if (Date.now() - t0 > 600 || Math.hypot(t.clientX - sx, t.clientY - sy) > 12) return
+          e.preventDefault()          // and no synthetic click after it
+          e.stopPropagation()
+          fn()
+        })
+      }
+
       const occupied: HTMLElement[] = []
       const centreOf = (e: HTMLElement, box: DOMRect) => {
         const r = e.getBoundingClientRect()
@@ -135,11 +154,7 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
           if (src) m.style.backgroundImage = `url("${src}")`
           m.style.transform = `rotate(${((i++ % 5) - 2) * 4}deg)`
         }
-        if (p.kind !== 'checkin' && p.kind !== 'ping' && onOpenPost) {
-          // stopPropagation: without it the tap reaches the map as well and
-          // the nearest fact opens behind the picture.
-          m.addEventListener('click', e => { e.stopPropagation(); onOpenPost(p.id) })
-        }
+        if (p.kind !== 'checkin' && p.kind !== 'ping' && onOpenPost) onTap(m, () => onOpenPost(p.id))
         layer(new maplibregl.Marker({ element: m, anchor: 'center' }).setLngLat(at).addTo(map), p.kind === 'checkin' || p.kind === 'ping' ? 2 : 4)
         occupied.push(m)
       }
@@ -237,6 +252,9 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         return best
       }
       map.on('click', e => {
+        // A tap that landed on a photograph belongs to the photograph.
+        const t = e.originalEvent?.target as HTMLElement | null
+        if (t && typeof t.closest === 'function' && t.closest('.mk-photo,.mk-diary,.mk-them')) return
         const f = nearestLore(e.point)
         if (f) openLore(f)
         else if (pop.isOpen()) pop.remove()
