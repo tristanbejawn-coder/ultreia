@@ -53,6 +53,12 @@ export async function dbUpdate(path: string, patch: Json): Promise<void> {
   if (!res.ok) throw new Error(`db update ${path}: ${res.status} ${await res.text()}`)
 }
 
+export async function dbDelete(path: string): Promise<void> {
+  if (!dbConfigured()) throw new Error('database not configured')
+  const res = await fetch(`${URL_BASE}/rest/v1/${path}`, { method: 'DELETE', headers: headers({ Prefer: 'return=minimal' }) })
+  if (!res.ok) throw new Error(`db delete ${path}: ${res.status} ${await res.text()}`)
+}
+
 // Storage: put bytes at a path in the public bucket; returns the public URL.
 export async function storagePut(path: string, bytes: ArrayBuffer | Uint8Array, contentType: string): Promise<string> {
   if (!dbConfigured()) throw new Error('database not configured')
