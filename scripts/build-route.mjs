@@ -127,11 +127,13 @@ function stitchOnce(ways, from, to, bridge) {
   const nodes = new Map()      // key -> [lng,lat]
   const adj = new Map()        // key -> [{k, w}]
   const dist = (a, b) => Math.hypot((a[0] - b[0]) * Math.cos(a[1] * Math.PI / 180), a[1] - b[1])
-  const link = (a, b) => {
+  // Bridge edges are penalised so they only ever cross a real gap and
+  // never undercut the road that is actually mapped.
+  const link = (a, b, penalty = 1) => {
     const ka = key(a), kb = key(b)
     if (!nodes.has(ka)) { nodes.set(ka, a); adj.set(ka, []) }
     if (!nodes.has(kb)) { nodes.set(kb, b); adj.set(kb, []) }
-    const w = dist(a, b)
+    const w = dist(a, b) * penalty
     adj.get(ka).push({ k: kb, w }); adj.get(kb).push({ k: ka, w })
   }
   for (const w of ways) {
@@ -148,7 +150,7 @@ function stitchOnce(ways, from, to, bridge) {
     const g = w.geometry; ends.push([g[0].lon, g[0].lat], [g[g.length - 1].lon, g[g.length - 1].lat])
   }
   for (let i = 0; i < ends.length; i++) for (let j = i + 1; j < ends.length; j++) {
-    const d = dist(ends[i], ends[j]); if (d > 0 && d < bridge) link(ends[i], ends[j])
+    const d = dist(ends[i], ends[j]); if (d > 0 && d < bridge) link(ends[i], ends[j], 8)
   }
   // Connected components; choose the one that comes closest to both towns.
   const comp = new Map(); let nComp = 0
