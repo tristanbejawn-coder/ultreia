@@ -56,7 +56,6 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
   holdRef.current = holdFlight
   // The flight the map wanted to run while something was over it.
   const heldFlight = useRef<(() => void) | null>(null)
-  const flightRaf = useRef<number | null>(null)
   const el = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const showLoreRef = useRef<((id: string) => void) | null>(null)
@@ -374,13 +373,12 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         map.on('idle', go)
       }
 
-      // The opening move retraces the walk rather than dropping onto the end
-      // of it. The camera lands on where they set off, then runs the gold line
-      // north — banking with every bend, closing in as it goes — and comes to
-      // rest on them. The whole point of the thing is the line getting longer,
-      // so the first thing it does is show the line.
-      const START_Z = 11.0, END_Z = 12.9
-      const START_P = terrainUrl ? 46 : 38, END_P = terrainUrl ? 58 : 48
+      // One move: the whole route, then a single unbroken descent onto where
+      // they are now. A camera that retraced the walked line was tried and
+      // dropped — following every bend of the coast read as fussy, and the
+      // arrival got lost in it. This just falls towards them and settles.
+      const END_Z = 13.4
+      const END_P = terrainUrl ? 56 : 46
       const total = state.route.totalKm
 
       // Which way the path is running at a given kilometre. 0 = north, so it
@@ -394,59 +392,34 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
 
       // A hand on the map ends the flight; being flown somewhere you didn't
       // ask for, while you're trying to look at something, is maddening.
-      const stopFlight = () => {
-        if (flightRaf.current) { cancelAnimationFrame(flightRaf.current); flightRaf.current = null }
-        map.stop()
-      }
+      const stopFlight = () => map.stop()
       for (const ev of ['mousedown', 'touchstart', 'wheel']) {
         map.getCanvas().addEventListener(ev, stopFlight, { passive: true })
       }
 
-      const trackWalk = () => {
-        // A long walk shouldn't take proportionally longer to fly over.
-        const trackMs = Math.min(6000, 2400 + km * 26)
-        map.flyTo({ center: pointAt(pts, 0), zoom: START_Z, pitch: START_P, bearing: headingAt(0), duration: 1300, essential: true })
-        map.once('moveend', () => {
-          if (!mapRef.current) return
-          let bearing = headingAt(0)
-          const t0 = performance.now()
-          const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2)
-          const step = (now: number) => {
-            if (!mapRef.current) return
-            const p = Math.min(1, (now - t0) / trackMs)
-            const e = ease(p)
-            const atKm = km * e
-            // The bearing chases the path rather than snapping to it, so a
-            // wiggly stretch of coast doesn't throw the camera about.
-            const want = headingAt(atKm)
-            bearing += (((want - bearing + 540) % 360) - 180) * 0.14
-            map.jumpTo({
-              center: pointAt(pts, atKm),
-              bearing,
-              zoom: START_Z + (END_Z - START_Z) * e,
-              pitch: START_P + (END_P - START_P) * e,
-            })
-            if (p < 1) flightRaf.current = requestAnimationFrame(step)
-            else flightRaf.current = null
-          }
-          flightRaf.current = requestAnimationFrame(step)
+      // curve below the 1.42 default keeps the descent shallow and even —
+      // the higher the curve, the more it arcs out before coming down, and
+      // arcing out is exactly what makes a flyover feel like a lurch.
+      const settle = (center: [number, number], zoom: number, pitch: number) =>
+        map.flyTo({
+          center, zoom, pitch,
+          bearing: headingAt(km),
+          duration: reduce ? 0 : 4200,
+          curve: 1.15,
+          essential: true,
         })
-      }
-
-      const restOnThem = () => map.jumpTo({ center: cut, zoom: END_Z, pitch: END_P, bearing: headingAt(km) })
 
       if (state.started) {
-        // Nothing to retrace on day one, and reduced motion gets the
-        // destination without the journey.
-        onReady(reduce || km < 2 ? restOnThem : trackWalk)
+        // Down onto them, facing the way they're walking, close enough to see
+        // the ground either side of the trail.
+        onReady(() => settle(cut, END_Z, END_P))
       } else {
-        // Before day one there is no line to run, so: a slow push-in onto the
-        // start, close enough to read the relief they're about to walk into.
-        onReady(() => map.flyTo({ center: cut, zoom: 11.4, pitch: terrainUrl ? 52 : 38, bearing: headingAt(0), duration: reduce ? 0 : 4200, essential: true }))
+        // Before day one there's nothing to arrive at, so it stops a little
+        // wider: enough of the first stage in frame to read where they'll go.
+        onReady(() => settle(cut, 12.4, terrainUrl ? 52 : 40))
       }
     })
     return () => {
-      if (flightRaf.current) { cancelAnimationFrame(flightRaf.current); flightRaf.current = null }
       heldFlight.current = null
       map.remove(); mapRef.current = null
     }
