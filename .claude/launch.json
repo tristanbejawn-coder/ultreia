@@ -4,8 +4,11 @@
     {
       "name": "ultreia",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "-p", "3922"],
-      "port": 3922
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "autoPort": true
     }
   ]
 }
