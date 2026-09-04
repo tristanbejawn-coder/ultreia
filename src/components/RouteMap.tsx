@@ -156,7 +156,9 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
       // because the card is opened from inside the map's own click. A tap on
       // open ground closes it instead, just below.
       const pop = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '272px', offset: 18, className: 'lore-pop' })
-      type LoreMarker = { l: PlacedLore; el: HTMLElement; shown: boolean }
+      // dot, not el: once a name is showing, the element is far wider than
+      // the ring, and its centre is not where anyone aims.
+      type LoreMarker = { l: PlacedLore; el: HTMLElement; dot: HTMLElement; shown: boolean }
       const loreMarks: LoreMarker[] = []
       for (const l of placeLore(state.route.points.map(p => ({ lng: p[0], lat: p[1], km: p[2] })))) {
         const m = document.createElement('div')
@@ -166,13 +168,13 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = l.label
         m.append(dot, tag)
         layer(new maplibregl.Marker({ element: m, anchor: 'center' }).setLngLat(l.at).addTo(map), 1)
-        loreMarks.push({ l, el: m, shown: false })
+        loreMarks.push({ l, el: m, dot, shown: false })
       }
 
       const openLore = (f: LoreMarker) => {
         // Hang the card below the ring when the ring is high on the screen,
         // above it when it is low, so it never runs off the top.
-        const y = centreOf(f.el, map.getContainer().getBoundingClientRect()).y
+        const y = centreOf(f.dot, map.getContainer().getBoundingClientRect()).y
         pop.options.anchor = y < map.getContainer().clientHeight * 0.45 ? 'top' : 'bottom'
         const card = document.createElement('div')
         card.className = 'lore-card'
@@ -202,7 +204,7 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         for (const f of loreMarks) {
           let show = on
           if (show) {
-            const at = centreOf(f.el, box)
+            const at = centreOf(f.dot, box)
             for (const t of taken) if (Math.hypot(at.x - t.x, at.y - t.y) < CLEAR_PX) { show = false; break }
             if (show) taken.push(at)
           }
@@ -224,7 +226,7 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         const box = map.getContainer().getBoundingClientRect()
         for (const f of loreMarks) {
           if (!f.shown) continue
-          const at = centreOf(f.el, box)
+          const at = centreOf(f.dot, box)
           const d = Math.hypot(at.x - pt.x, at.y - pt.y)
           if (d < bestD) { bestD = d; best = f }
         }
