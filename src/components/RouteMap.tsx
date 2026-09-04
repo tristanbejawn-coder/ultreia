@@ -156,7 +156,12 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         const dot = document.createElement('i'); dot.className = 'dot'
         const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = l.label
         m.append(dot, tag)
-        layer(new maplibregl.Marker({ element: m, anchor: 'center' }).setLngLat(l.at).addTo(map), 1)
+        const mk = new maplibregl.Marker({ element: m, anchor: 'center' }).setLngLat(l.at).addTo(map)
+        layer(mk, 1)
+        // MapLibre's own marker wrapper takes pointer events, and would eat
+        // the very taps aimed at the ring before the map ever sees them.
+        const wrap = mk.getElement().parentElement as HTMLElement | null
+        if (wrap) wrap.style.pointerEvents = 'none'
         loreMarks.push({ l, el: m, shown: false })
       }
 
