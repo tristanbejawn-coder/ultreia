@@ -171,7 +171,22 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
       map.fitBounds(bounds, { padding: { top: 120, bottom: 110, left: 40, right: 40 }, duration: 0 })
       const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
       if (state.started && !state.finished) {
-        setTimeout(() => map.flyTo({ center: cut, zoom: 11.6, pitch: terrainUrl ? 58 : 45, bearing: -18, duration: reduce ? 0 : 3400, essential: true }), reduce ? 0 : 1400)
+        // Land on the story, not on a hillside: frame the last day or two of
+        // walked trail with them at its head, so the gold thread and the
+        // photographs strung along it are what you see when the camera stops.
+        const recentFrom = Math.max(0, km - 48)
+        const recent = pts.filter(p => p[2] >= recentFrom && p[2] <= km).map(p => [p[0], p[1]] as [number, number])
+        recent.push(cut)
+        const target = (() => {
+          if (recent.length < 2) return { center: cut, zoom: 11.6 }
+          const b = recent.reduce((acc, c) => acc.extend(c), new maplibregl.LngLatBounds(recent[0], recent[0]))
+          // The sheet covers the bottom of the screen; keep the trail above it.
+          const cam = map.cameraForBounds(b, { padding: { top: 150, bottom: 340, left: 46, right: 46 }, bearing: -18 })
+          if (!cam || typeof cam.zoom !== 'number') return { center: cut, zoom: 11.6 }
+          // Pitch eats the far distance, so pull back a little.
+          return { center: cam.center as maplibregl.LngLatLike, zoom: Math.min(Math.max(cam.zoom - (terrainUrl ? 0.4 : 0.2), 8.6), 13.2) }
+        })()
+        setTimeout(() => map.flyTo({ ...target, pitch: terrainUrl ? 56 : 45, bearing: -18, duration: reduce ? 0 : 3400, essential: true }), reduce ? 0 : 1400)
       } else if (!state.started) {
         // Countdown: a slow push-in onto the start, so the relief shows
         setTimeout(() => map.flyTo({ center: cut, zoom: 10.4, pitch: terrainUrl ? 50 : 35, bearing: -12, duration: reduce ? 0 : 4200, essential: true }), reduce ? 0 : 1800)
