@@ -36,6 +36,7 @@ export type ForkOption = {
   id: string
   label: string           // "Cross to A Guarda by boat"
   chain: SegmentId[]      // segments from the fork node to the rejoin node
+  then?: string           // route id to follow from the rejoin node, when the rejoin is not on the current plan
   summary: string         // one sentence, for the choice card
   km: number
   days: number
@@ -81,6 +82,7 @@ const nodes: Node[] = [
   { id: 'santiago',        name: 'Santiago de Compostela', country: 'ES', note: 'The Praza do Obradoiro. Ultreia.' },
   // Central from Porto (for other walkers)
   { id: 'vilarinho',       name: 'Vilarinho',         country: 'PT' },
+  { id: 'rates',           name: 'São Pedro de Rates', country: 'PT', note: 'Romanesque church; the Coastal and Central touch here' },
   { id: 'barcelos',        name: 'Barcelos',          country: 'PT' },
   { id: 'ponte-de-lima',   name: 'Ponte de Lima',     country: 'PT' },
   { id: 'rubiaes',         name: 'Rubiães',           country: 'PT' },
@@ -117,13 +119,30 @@ const segments: Segment[] = [
 
   // ---- Central from Porto (catalogue only; other walkers) ----
   { id: 'porto-vilarinho',         from: 'porto',         to: 'vilarinho',     km: 27,   name: 'Porto → Vilarinho',           character: 'Out through the suburbs; many take the metro to Vilar do Pinheiro' },
-  { id: 'vilarinho-barcelos',      from: 'vilarinho',     to: 'barcelos',      km: 28,   name: 'Vilarinho → Barcelos',        character: 'Roman bridges and the Ave valley' },
+  { id: 'vilarinho-rates',         from: 'vilarinho',     to: 'rates',         km: 12,   name: 'Vilarinho → Rates',           character: 'Roman bridges and the Ave valley' },
+  { id: 'rates-barcelos',          from: 'rates',         to: 'barcelos',      km: 16,   name: 'Rates → Barcelos',            character: 'Farm tracks and cobbles into the town of the rooster' },
+  // Connector: leave the coast on day two, join the Central at Rates
+  { id: 'vila-do-conde-rates',     from: 'vila-do-conde', to: 'rates',         km: 11,   name: 'Vila do Conde → Rates',       character: 'Inland through farmland and eucalyptus; quiet, well marked' },
   { id: 'barcelos-ponte-de-lima',  from: 'barcelos',      to: 'ponte-de-lima', km: 34,   name: 'Barcelos → Ponte de Lima',    character: 'Long; usually split at Balugães or Vitorino', stages: ['Balugães'] },
   { id: 'ponte-de-lima-rubiaes',   from: 'ponte-de-lima', to: 'rubiaes',       km: 18,   name: 'Ponte de Lima → Rubiães',     character: 'The Labruja: the hardest climb of the whole Camino', ascent: 450 },
   { id: 'rubiaes-valenca',         from: 'rubiaes',       to: 'valenca',       km: 19,   name: 'Rubiães → Valença',           character: 'Downhill to the Minho and the fortress' },
 ]
 
 const forks: Fork[] = [
+  {
+    id: 'vila-do-conde',
+    at: 'vila-do-conde',
+    rejoinAt: 'rates',
+    question: 'Stay on the coast, or cut inland to the Central?',
+    defaultOption: 'coast',
+    options: [
+      { id: 'coast',  label: 'Stay on the coast',
+        chain: [], summary: 'Esposende, Viana, Caminha: boardwalks and fishing towns for another four days.', km: 0, days: 0 },
+      { id: 'inland', label: 'Inland to Rates and the Central', then: 'central',
+        chain: ['vila-do-conde-rates'],
+        summary: 'Eleven quiet kilometres to the church at Rates, then the classic road: Barcelos, Ponte de Lima, the Labruja.', km: 11, days: 1 },
+    ],
+  },
   {
     id: 'caminha',
     at: 'caminha',
@@ -162,7 +181,7 @@ const coastalPlan: SegmentId[] = [
   'redondela-pontevedra','pontevedra-caldas','caldas-padron','padron-santiago',
 ]
 const centralPlan: SegmentId[] = [
-  'porto-vilarinho','vilarinho-barcelos','barcelos-ponte-de-lima','ponte-de-lima-rubiaes','rubiaes-valenca',
+  'porto-vilarinho','vilarinho-rates','rates-barcelos','barcelos-ponte-de-lima','ponte-de-lima-rubiaes','rubiaes-valenca',
   'valenca-tui','tui-o-porrino','o-porrino-redondela','redondela-pontevedra','pontevedra-caldas','caldas-padron','padron-santiago',
 ]
 
@@ -171,10 +190,12 @@ export const PORTUGUES: Camino = {
   name: 'Camino Portugués',
   nodes, segments, forks,
   routes: [
-    { id: 'coastal', name: 'Coastal (Caminho da Costa)', from: 'porto', plan: coastalPlan, km: 270, days: '12–14',
-      blurb: 'Sea on your left for eight days, then inland through Galicia. Boardwalks, fishing towns, the boat over the Minho.' },
-    { id: 'central', name: 'Central', from: 'porto', plan: centralPlan, km: 245, days: '10–12',
-      blurb: 'The classic. Roman roads, Barcelos, Ponte de Lima, the Labruja climb, then the same road through Galicia.' },
+    { id: 'coastal', name: 'Coastal (Caminho da Costa)', from: 'porto', plan: coastalPlan, km: 274, days: '12–15',
+      blurb: 'Sea on your left for eight days, then inland through Galicia. Boardwalks, fishing towns, the boat over the Minho. Marking gets confusing around Vigo.' },
+    { id: 'litoral', name: 'Litoral (Senda Litoral)', from: 'porto', plan: coastalPlan, km: 280, days: '12–15',
+      blurb: 'The Coastal’s beach-side twin: the same towns, but on the sand and the boardwalks wherever there are any. Flattest of all, and the least marked — the two interleave, so choose each morning.' },
+    { id: 'central', name: 'Central', from: 'porto', plan: centralPlan, km: 243.5, days: '10–13',
+      blurb: 'The classic, and the best marked. Roman roads, Barcelos, Ponte de Lima, the Labruja climb, then the same road through Galicia.' },
   ],
 }
 
@@ -201,9 +222,18 @@ export function applyChoices(c: Camino, plan: SegmentId[], choices: Record<strin
     const opt = fork.options.find(o => o.id === optId)
     if (!opt) continue
     const start = out.findIndex(id => segmentById(c, id).from === fork.at)
+    if (start < 0) continue
+    if (!opt.chain.length && !opt.then) continue           // "stay as planned"
     const end = out.findIndex(id => segmentById(c, id).to === fork.rejoinAt)
-    if (start < 0 || end < 0 || end < start) continue
-    out = [...out.slice(0, start), ...opt.chain, ...out.slice(end + 1)]
+    if (end >= start) {
+      out = [...out.slice(0, start), ...opt.chain, ...out.slice(end + 1)]
+    } else if (opt.then) {
+      // The rejoin is on another route: follow that route from the rejoin node on.
+      const other = c.routes.find(r => r.id === opt.then)?.plan ?? []
+      const from = other.findIndex(id => segmentById(c, id).from === fork.rejoinAt)
+      if (from < 0) continue
+      out = [...out.slice(0, start), ...opt.chain, ...other.slice(from)]
+    }
   }
   return out
 }

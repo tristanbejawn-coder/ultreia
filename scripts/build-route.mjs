@@ -28,7 +28,7 @@ const MIRRORS = [
 const UA = 'ultreia-route-builder/0.1 (camino walk tracker; contact via github tristanbejawn-coder/ultreia)'
 
 // OSM relation ids (see catalogue notes). bbox = [south, west, north, east]
-const COSTA = 6100606, CENTRAL = 7684546, ESPIRITUAL = 6259246
+const COSTA = 6100606, CENTRAL = 12786090, ESPIRITUAL = 6259246   // CENTRAL: 'Caminho Português de Santiago', Coimbra → Santiago
 const SOURCES = {
   // Coastal: whole relations (rel-<id>.json) or Costa ways clipped near Porto
   'porto-matosinhos':         { rel: [COSTA, 9044581, 17600329], bbox: [41.13, -8.72, 41.20, -8.58] },
@@ -51,7 +51,8 @@ const SOURCES = {
   'caldas-padron':            { central: 'es' },
   'padron-santiago':          { central: 'es' },
   'porto-vilarinho':          { central: 'pt' },
-  'vilarinho-barcelos':       { central: 'pt' },
+  'vilarinho-rates':          { central: 'pt' },
+  'rates-barcelos':           { central: 'pt' },
   'barcelos-ponte-de-lima':   { central: 'pt' },
   'ponte-de-lima-rubiaes':    { central: 'pt' },
   'rubiaes-valenca':          { central: 'pt' },

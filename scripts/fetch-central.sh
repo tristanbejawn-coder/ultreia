@@ -9,7 +9,7 @@ for box in "41.10,-8.75,42.06,-8.50" "42.02,-8.75,42.90,-8.40"; do
   f=$RAW/central-ids-$tag.json
   if ! ok "$f"; then
     for a in 1 2 3 4 5; do
-      curl -sS --max-time 240 -A "$UA" -G "$M" --data-urlencode "data=[out:json][timeout:200];rel(7684546);way(r)($box);out ids;" -o "$f"
+      curl -sS --max-time 240 -A "$UA" -G "$M" --data-urlencode "data=[out:json][timeout:200];rel(12786090);way(r)($box);out ids;" -o "$f"
       if ok "$f"; then echo "ok ids $box $(wc -c < $f)B"; break; else echo "retry ids $box ($a)"; sleep $((a*20)); fi
     done
   fi
