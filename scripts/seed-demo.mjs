@@ -1,15 +1,11 @@
 // Put the sample walk into a real database, as a real walk on its own slug.
 //
-//   node scripts/seed-demo.mjs                     # create/refresh /w/demo-full
+//   node scripts/seed-demo.mjs                     # create/refresh /w/demo
 //   node scripts/seed-demo.mjs --slug sales-demo   # a second one, any slug
 //   node scripts/seed-demo.mjs --starts-on 2026-09-10
 //   node scripts/seed-demo.mjs --dry-run           # print a summary, write nothing
 //   node scripts/seed-demo.mjs --sql               # print SQL for the editor
 //   node scripts/seed-demo.mjs --delete            # remove it again
-//
-// Not to be confused with scripts/seed-demo.sql, which seeds a different,
-// shorter demo walk at slug 'demo' from real licensed photographs. This one
-// is the six-day version and lives at 'demo-full'; the two coexist.
 //
 // Why this exists: src/lib/demo.ts only renders when Supabase is absent, and
 // that switch is site-wide. Once the env vars are set — as they are on
@@ -39,9 +35,12 @@ const flag = (name, fallback = null) => {
 }
 const has = name => args.includes(`--${name}`)
 
-const SLUG = flag('slug', 'demo-full')
-const NAME = flag('name', 'Ju & Jit walk to Santiago (six-day sample)')
-const CODE = flag('code', 'FULL')
+const SLUG = flag('slug', 'demo')
+const NAME = flag('name', 'Ju & Jit walk to Santiago')
+// Whose walk it is, so it shows up under /account. Not a real owner: the demo
+// is nobody's walk, it just needs a name against it.
+const OWNER = flag('owner', 'tristan.bejawn@gmail.com')
+const CODE = flag('code', 'DEMO')
 const DRY = has('dry-run')
 const SQL = has('sql')
 const DELETE = has('delete')
@@ -147,6 +146,7 @@ const walkRow = {
   timezone: 'Europe/Lisbon',
   digest_hour: 19,
   avatar_path: '/walks/ju-and-jit.jpg',
+  owner_email: OWNER,
   // getWalk() returns null for an unpaid walk, so the page would 404 without this.
   paid: true,
 }
@@ -215,10 +215,10 @@ function toSql() {
   L.push(`-- Idempotent: re-running replaces this walk and nothing else.`)
   L.push(`delete from ultreia_walks where slug = ${q(SLUG)};`)
   L.push('')
-  L.push(`insert into ultreia_walks (id, slug, code, name, camino, start_node, plan, walkers, starts_on, timezone, digest_hour, avatar_path, paid, paid_at) values (`)
+  L.push(`insert into ultreia_walks (id, slug, code, name, camino, start_node, plan, walkers, starts_on, timezone, digest_hour, avatar_path, owner_email, paid, paid_at) values (`)
   L.push(`  ${q(walkId)}, ${q(SLUG)}, ${q(CODE)}, ${q(NAME)}, ${q(sample.camino)}, ${q(sample.startNode)},`)
   L.push(`  ${q(JSON.stringify(sample.plan))}::jsonb, ${q(JSON.stringify(sample.walkers))}::jsonb,`)
-  L.push(`  ${q(STARTS_ON)}, 'Europe/Lisbon', 19, ${q(walkRow.avatar_path)}, true, now());`)
+  L.push(`  ${q(STARTS_ON)}, 'Europe/Lisbon', 19, ${q(walkRow.avatar_path)}, ${q(OWNER)}, true, now());`)
   L.push('')
   L.push('insert into ultreia_posts (id, walk_id, walker, kind, caption, taken_at, km, km_source, segment_id, media_path, width, height) values')
   L.push(postRows(walkId).map(r =>
