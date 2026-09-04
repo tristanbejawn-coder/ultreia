@@ -16,6 +16,17 @@ const RESEND_SECONDS = 45
 
 export type Owner = { email: string }
 
+// Redirects must use the public site URL: on Netlify the request URL a
+// handler sees is the internal deploy hostname, and a cookie set for the
+// public host is not sent there.
+export function siteUrl(req: Request): string {
+  const configured = process.env.SITE_URL || process.env.VAPID_SUBJECT
+  if (configured) return configured.replace(/\/$/, '')
+  const h = req.headers.get('x-forwarded-host') || req.headers.get('host')
+  const proto = req.headers.get('x-forwarded-proto') || 'https'
+  return h ? `${proto}://${h}` : new URL(req.url).origin
+}
+
 function token(bytes = 32): string {
   const a = new Uint8Array(bytes)
   crypto.getRandomValues(a)

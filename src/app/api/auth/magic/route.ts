@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { dbConfigured } from '@/lib/db'
-import { createLoginLink, normalizeEmail } from '@/lib/auth'
+import { createLoginLink, normalizeEmail, siteUrl } from '@/lib/auth'
 import { emailConfigured, loginEmail, sendEmail } from '@/lib/email'
 
 export const dynamic = 'force-dynamic'
@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}))
   const email = normalizeEmail(body.email)
   if (!email) return NextResponse.json({ error: 'That doesn’t look like an email address.' }, { status: 400 })
-  const origin = process.env.VAPID_SUBJECT || new URL(req.url).origin
+  const origin = siteUrl(req)
   const link = await createLoginLink(email, origin)
   if (!link) return NextResponse.json({ ok: true, sent: true, throttled: true })
   const mail = loginEmail(link)
