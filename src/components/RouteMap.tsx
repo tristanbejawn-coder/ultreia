@@ -109,6 +109,8 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         const w = m.getElement().parentElement as HTMLElement | null
         if (w) w.style.zIndex = String(z)
       }
+      // Where the things a fact must not hide behind are standing.
+      const occupied: [number, number][] = []
 
       // Posts
       const located = state.posts.filter(p => p.km != null && (p.kind === 'photo' || p.kind === 'clip' || p.kind === 'diary' || p.kind === 'checkin' || p.kind === 'ping'))
@@ -126,38 +128,82 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         }
         if (p.kind !== 'checkin' && p.kind !== 'ping' && onOpenPost) m.addEventListener('click', () => onOpenPost(p.id))
         layer(new maplibregl.Marker({ element: m, anchor: 'center' }).setLngLat(at).addTo(map), p.kind === 'checkin' || p.kind === 'ping' ? 2 : 4)
+        occupied.push(at)
       }
 
       // Facts standing on the ground they cross. Only the ones the chosen
       // route passes near, so the Espiritual's monastery appears only if they
-      // take the boat. Quieter than a photo: a small ring, a card when tapped.
-      const pop = new maplibregl.Popup({ closeButton: false, maxWidth: '272px', offset: 14, className: 'lore-pop' })
-      const loreEls: HTMLElement[] = []
+      // take the boat.
+      //
+      // Touch is the whole problem here. A ring small enough to stay quieter
+      // than a photograph is far smaller than a thumb, so the markers take no
+      // pointer events at all: the map itself handles the tap and opens the
+      // nearest fact within a finger's width. Nothing to hit exactly, and
+      // nothing swallowing a drag when you meant to pan. Facts also stand
+      // down when they'd collide with a photograph, with the walkers, or with
+      // each other, so whatever is showing is always reachable.
+      const TAP_PX = 34, CLEAR_PX = 32
+      const pop = new maplibregl.Popup({ closeButton: true, maxWidth: '272px', offset: 18, className: 'lore-pop' })
+      type LoreMarker = { l: (typeof LORE)[number]; el: HTMLElement; shown: boolean }
+      const loreMarks: LoreMarker[] = []
       for (const l of LORE) {
         let off = Infinity
         for (const p of pts) { const d = distKm(l.at, [p[0], p[1]]); if (d < off) off = d; if (off < 0.4) break }
         if (off > 5) continue
-        const m = document.createElement('button')
+        const m = document.createElement('div')
         m.className = `mk-lore k-${l.kind}`
-        m.setAttribute('aria-label', l.title)
-        m.addEventListener('click', e => {
-          e.stopPropagation()
-          const card = document.createElement('div')
-          card.className = 'lore-card'
-          const h = document.createElement('h3'); h.textContent = l.title
-          const t = document.createElement('p'); t.textContent = l.text
-          card.append(h, t)
-          pop.setLngLat(l.at).setDOMContent(card).addTo(map)
-        })
+        m.title = l.title
         layer(new maplibregl.Marker({ element: m, anchor: 'center' }).setLngLat(l.at).addTo(map), 1)
-        loreEls.push(m)
+        loreMarks.push({ l, el: m, shown: false })
       }
-      // They stay out of the way until the map is close enough to have room.
-      const showLore = () => {
+
+      const openLore = (f: LoreMarker) => {
+        const card = document.createElement('div')
+        card.className = 'lore-card'
+        const h = document.createElement('h3'); h.textContent = f.l.title
+        const t = document.createElement('p'); t.textContent = f.l.text
+        card.append(h, t)
+        pop.setLngLat(f.l.at).setDOMContent(card).addTo(map)
+        for (const o of loreMarks) o.el.classList.toggle('open', o === f)
+        pop.once('close', () => f.el.classList.remove('open'))
+      }
+
+      // Which facts can be seen — and therefore tapped — right now.
+      const placeLore = () => {
         const on = map.getZoom() >= 9.4
-        for (const m of loreEls) m.classList.toggle('on', on)
+        const taken = occupied.map(c => map.project(c))
+        for (const f of loreMarks) {
+          let show = on
+          if (show) {
+            const at = map.project(f.l.at)
+            for (const t of taken) {
+              const near = Math.hypot(at.x - t.x, at.y - t.y)
+              if (near < CLEAR_PX) { show = false; break }
+            }
+            if (show) { taken.push(at) }
+          }
+          f.shown = show
+          f.el.classList.toggle('on', show)
+        }
       }
-      map.on('zoom', showLore); showLore()
+      // A tap opens the nearest fact within a thumb's width of where it landed.
+      const nearestLore = (pt: { x: number; y: number }): LoreMarker | null => {
+        let best: LoreMarker | null = null, bestD = TAP_PX
+        for (const f of loreMarks) {
+          if (!f.shown) continue
+          const at = map.project(f.l.at)
+          const d = Math.hypot(at.x - pt.x, at.y - pt.y)
+          if (d < bestD) { bestD = d; best = f }
+        }
+        return best
+      }
+      map.on('click', e => { const f = nearestLore(e.point); if (f) openLore(f) })
+      map.on('mousemove', e => {
+        const f = nearestLore(e.point)
+        map.getCanvas().style.cursor = f ? 'pointer' : ''
+        for (const o of loreMarks) o.el.classList.toggle('near', o === f)
+      })
+      map.on('move', placeLore); map.on('zoom', placeLore); placeLore()
 
       // The figures
       const f = document.createElement('div')
