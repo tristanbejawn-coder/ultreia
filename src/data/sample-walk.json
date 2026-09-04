@@ -1,6 +1,7 @@
 {
-  "_": "The sample walk's content, shared by the no-database fallback (src/lib/demo.ts) and the seeder (scripts/seed-demo.mjs) so the two can't drift. Posts are placed by stage and a fraction along it, never by kilometre, so they survive a route:build or a fork. Pictures live in public/demo and are generated placeholders, not photographs of the walkers.",
+  "_": "The sample walk's content, shared by the no-database fallback (src/lib/demo.ts) and the seeder (scripts/seed-demo.mjs) so the two can't drift. Posts are placed by stage and a fraction along it, never by kilometre, so they survive a route:build or a fork. Pictures live in public/demo/sample and are generated placeholders, not photographs of the walkers — public/demo itself holds the licensed photographs used by the other demo walk (scripts/seed-demo.sql, slug 'demo').",
 
+  "mediaDir": "/demo/sample",
   "daysIn": 5,
   "camino": "portugues",
   "startNode": "porto",
