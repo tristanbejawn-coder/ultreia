@@ -1,10 +1,11 @@
 // Walk state: everything a page needs, assembled server-side.
-// Works without a database (demo walk, no posts) so the site renders before
-// Supabase exists.
+// Works without a database: the sample walk in lib/demo fills in, so the site
+// can be seen full before Supabase exists.
 
 import { dbSelect, dbConfigured, publicUrl } from '@/lib/db'
 import { buildRoute, segmentAtKm, type Route } from '@/lib/route'
 import { CAMINOS, type Camino } from '@/data/caminos'
+import { demoPosts, demoMessages, demoStartsOn } from '@/lib/demo'
 
 export type Walker = { key: string; name: string }
 export type WalkRow = {
@@ -44,11 +45,12 @@ const DEMO_WALK: WalkRow = {
   id: 'demo', slug: 'ju-and-jit', name: 'Ju & Jit walk to Santiago', camino: 'portugues', start_node: 'porto',
   plan: CAMINOS.portugues.routes[0].plan,
   walkers: [{ key: 'ju', name: 'Ju' }, { key: 'jit', name: 'Jit' }],
-  starts_on: '2026-09-10', timezone: 'Europe/Lisbon', digest_hour: 19, avatar_path: '/walks/ju-and-jit.jpg', paid: true, code: 'JUJIT',
+  // Set off DEMO_DAYS_IN days ago, so the preview is always a walk in progress.
+  starts_on: demoStartsOn(), timezone: 'Europe/Lisbon', digest_hour: 19, avatar_path: '/walks/ju-and-jit.jpg', paid: true, code: 'JUJIT',
 }
 
 export async function getWalk(slug: string): Promise<WalkRow | null> {
-  if (!dbConfigured()) return slug === DEMO_WALK.slug ? DEMO_WALK : null
+  if (!dbConfigured()) return slug === DEMO_WALK.slug ? { ...DEMO_WALK, starts_on: demoStartsOn() } : null
   const rows = await dbSelect<WalkRow>(`ultreia_walks?slug=eq.${encodeURIComponent(slug)}&select=id,slug,name,camino,start_node,plan,walkers,starts_on,timezone,digest_hour,avatar_path,paid,owner_email,code&limit=1`)
   const w = rows[0]
   // A draft nobody has paid for is not a page yet.
@@ -58,7 +60,7 @@ export async function getWalk(slug: string): Promise<WalkRow | null> {
 export async function getWalkByToken(token: string): Promise<{ walk: WalkRow; walker: Walker } | null> {
   // Preview mode: /go/preview opens the walkers' screen with the demo walk so
   // it can be seen before a database exists. Posting has nowhere to go yet.
-  if (!dbConfigured()) return token === 'preview' ? { walk: DEMO_WALK, walker: DEMO_WALK.walkers[1] } : null
+  if (!dbConfigured()) return token === 'preview' ? { walk: { ...DEMO_WALK, starts_on: demoStartsOn() }, walker: DEMO_WALK.walkers[1] } : null
   const keys = await dbSelect<{ walk_id: string; walker: string }>(`ultreia_walker_keys?token=eq.${encodeURIComponent(token)}&select=walk_id,walker&limit=1`)
   if (!keys[0]) return null
   const rows = await dbSelect<WalkRow>(`ultreia_walks?id=eq.${keys[0].walk_id}&select=id,slug,name,camino,start_node,plan,walkers,starts_on,timezone,digest_hour,avatar_path,paid&limit=1`)
@@ -97,6 +99,10 @@ export async function getWalkState(slug: string): Promise<WalkState | null> {
     for (const r of reacts) { byPost[r.post_id] ??= {}; byPost[r.post_id][r.emoji] = (byPost[r.post_id][r.emoji] || 0) + 1 }
     posts = rows.map(r => ({ ...r, media_url: publicUrl(r.media_path), poster_url: publicUrl(r.poster_path), reactions: byPost[r.id] || {} }))
     messages = await dbSelect<MessageRow>(`ultreia_messages?walk_id=eq.${walk.id}&deleted_at=is.null&select=id,from_name,body,written_at,delivered_at&order=written_at.desc&limit=200`)
+  } else {
+    // No database: fill the sample walk in so the app can be seen full.
+    posts = demoPosts(route, walk.starts_on || demoStartsOn())
+    messages = demoMessages(walk.starts_on || demoStartsOn())
   }
 
   // Position: the furthest kilometre they've been placed at, by check-in or
