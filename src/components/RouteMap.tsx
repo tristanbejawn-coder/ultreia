@@ -68,15 +68,18 @@ export default function RouteMap({ state, tileUrl, attribution, onOpenPost }: Pr
       map.addLayer({ id: 'walked-glow', type: 'line', source: 'walked', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#F0B429', 'line-width': 16, 'line-opacity': 0.28, 'line-blur': 6 } })
       map.addLayer({ id: 'walked-line', type: 'line', source: 'walked', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#F0B429', 'line-width': 4 } })
 
-      // Stage towns
-      for (const s of state.route.segments) {
-        const at = pointAt(pts, s.km)
-        const d = document.createElement('div'); d.className = 'mk-node'; d.textContent = s.from
+      // Stage towns. Zoomed right out only the ends are named; the rest
+      // appear once there's room for them.
+      const labels: { el: HTMLElement; always: boolean }[] = []
+      const addLabel = (at: [number, number], text: string, always: boolean) => {
+        const d = document.createElement('div'); d.className = 'mk-node'; d.textContent = text
         new maplibregl.Marker({ element: d, anchor: 'top', offset: [0, 8] }).setLngLat(at).addTo(map)
+        labels.push({ el: d, always })
       }
-      const end = pointAt(pts, state.route.totalKm)
-      const endEl = document.createElement('div'); endEl.className = 'mk-node'; endEl.textContent = 'Santiago'
-      new maplibregl.Marker({ element: endEl, anchor: 'top', offset: [0, 8] }).setLngLat(end).addTo(map)
+      state.route.segments.forEach((s, i) => addLabel(pointAt(pts, s.km), s.from, i === 0))
+      addLabel(pointAt(pts, state.route.totalKm), 'Santiago', true)
+      const showLabels = () => { const z = map.getZoom(); for (const l of labels) l.el.style.display = l.always || z >= 9.2 ? '' : 'none' }
+      map.on('zoom', showLabels); showLabels()
 
       // Posts
       const located = state.posts.filter(p => p.km != null && (p.kind === 'photo' || p.kind === 'clip' || p.kind === 'diary' || p.kind === 'checkin'))
