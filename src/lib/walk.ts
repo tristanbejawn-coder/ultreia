@@ -54,7 +54,9 @@ export async function getWalk(slug: string): Promise<WalkRow | null> {
 }
 
 export async function getWalkByToken(token: string): Promise<{ walk: WalkRow; walker: Walker } | null> {
-  if (!dbConfigured()) return null
+  // Preview mode: /go/preview opens the walkers' screen with the demo walk so
+  // it can be seen before a database exists. Posting has nowhere to go yet.
+  if (!dbConfigured()) return token === 'preview' ? { walk: DEMO_WALK, walker: DEMO_WALK.walkers[1] } : null
   const keys = await dbSelect<{ walk_id: string; walker: string }>(`walker_keys?token=eq.${encodeURIComponent(token)}&select=walk_id,walker&limit=1`)
   if (!keys[0]) return null
   const rows = await dbSelect<WalkRow>(`walks?id=eq.${keys[0].walk_id}&select=id,slug,name,camino,start_node,plan,walkers,starts_on,timezone,digest_hour,avatar_path&limit=1`)
