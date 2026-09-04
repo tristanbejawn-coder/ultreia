@@ -26,38 +26,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ w
       paid = true
     }
   }
-  const keys = paid ? await dbSelect<{ walker: string; token: string }>(`ultreia_walker_keys?walk_id=eq.${walk.id}&select=walker,token`) : []
-  const site = process.env.SITE_URL || process.env.VAPID_SUBJECT || ''
-  const publicUrl = `${site}/w/${walk.slug}`
+  if (paid) redirect(walk.slug === 'ju-and-jit' ? '/?welcome=1' : `/w/${walk.slug}?welcome=1`)
 
   return (
     <div className="account">
-      {paid ? (
-        <>
-          <div className="label gold" style={{ color: 'var(--arrow-ink)' }}>Paid · your walk is live</div>
-          <h1 className="display" style={{ fontSize: 40, margin: '8px 0 14px' }}>Buen Camino</h1>
-          <p style={{ color: 'var(--ink-2)', margin: '0 0 22px' }}>Three things to do now, in this order.</p>
-          <section className="walk-card">
-            <div className="link-row" style={{ borderTop: 0, paddingTop: 0 }}>
-              <div className="label">1 · Send everyone at home this link, or the code <span className="mono" style={{ color: 'var(--ink)' }}>{walk.code}</span></div>
-              <a className="mono link" href={publicUrl}>{publicUrl.replace('https://', '')}</a>
-            </div>
-            {walk.walkers.map(w => {
-              const k = keys.find(x => x.walker === w.key)
-              return (
-                <div className="link-row" key={w.key}>
-                  <div className="label">2 · On {w.name}’s phone, open this and add it to the home screen · private</div>
-                  {k && <a className="mono link" href={`/go/${k.token}`}>{site.replace('https://', '')}/go/{k.token}</a>}
-                </div>
-              )
-            })}
-            <div className="link-row">
-              <div className="label">3 · Post a photo from the walkers’ screen to see it land on the map</div>
-            </div>
-          </section>
-          <Link className="btn ghost" href="/account">Your account</Link>
-        </>
-      ) : (
+      {(
         <>
           <div className="label">Not paid yet</div>
           <h1 className="display" style={{ fontSize: 36, margin: '8px 0 14px' }}>{walk.name}</h1>

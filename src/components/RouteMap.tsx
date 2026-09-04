@@ -63,7 +63,7 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         ...(terrainUrl ? { terrain: { source: 'dem', exaggeration: 1.35 } } : {}),
       },
       center: cut, zoom: 8, pitch: 0, attributionControl: false,
-      cooperativeGestures: true,
+      cooperativeGestures: false,   // one finger moves the map, two fingers zoom
     })
     mapRef.current = map
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right')
@@ -86,8 +86,16 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
       }
       state.route.segments.forEach((s, i) => addLabel(pointAt(pts, s.km), s.from, i === 0))
       addLabel(pointAt(pts, state.route.totalKm), 'Santiago', true)
-      const showLabels = () => { const z = map.getZoom(); for (const l of labels) l.el.style.display = l.always || z >= 9.2 ? '' : 'none' }
-      map.on('zoom', showLabels); showLabels()
+      // Labels appear once there's room, and never under the header.
+      const showLabels = () => {
+        const z = map.getZoom()
+        for (const l of labels) {
+          const m = l.el.parentElement as HTMLElement | null   // the marker wrapper carries the transform
+          const under = m ? m.getBoundingClientRect().top - map.getContainer().getBoundingClientRect().top < 120 : false
+          l.el.style.display = (l.always || z >= 9.2) && !under ? '' : 'none'
+        }
+      }
+      map.on('zoom', showLabels); map.on('move', showLabels); showLabels()
 
       // Posts
       const located = state.posts.filter(p => p.km != null && (p.kind === 'photo' || p.kind === 'clip' || p.kind === 'diary' || p.kind === 'checkin' || p.kind === 'ping'))

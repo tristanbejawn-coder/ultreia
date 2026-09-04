@@ -2,14 +2,15 @@
 // The route page: full-bleed map, then a sheet that rides up over it with
 // the status row, today's stage, and the stages walked so far.
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import RouteMap from './RouteMap'
 import Lightbox from './Lightbox'
+import ShareSheet, { type OwnerLinks } from './ShareSheet'
 import type { ClientState } from '@/lib/walk'
 import { fmtDatePlus, fmtTime } from '@/lib/fmt'
 
-type Props = { state: ClientState; tileUrl: string; attribution: string; terrainUrl?: string | null; base: string }
+type Props = { state: ClientState; tileUrl: string; attribution: string; terrainUrl?: string | null; base: string; ownerLinks?: OwnerLinks | null; publicUrl: string }
 
 function shortName(n?: string): string {
   return (n || '').replace(' de Compostela', '').replace(' do Castelo', '')
@@ -19,16 +20,17 @@ function plannedDate(startsOn: string | null, index: number): string | null {
   return startsOn ? fmtDatePlus(startsOn, index) : null
 }
 
-function share(state: ClientState) {
-  if (typeof window === 'undefined') return
-  const url = window.location.href
-  const nav = window.navigator
-  if (typeof nav.share === 'function') nav.share({ title: state.walk.name, text: `${state.walk.name} — follow along`, url }).catch(() => {})
-  else if (nav.clipboard) nav.clipboard.writeText(url).catch(() => {})
-}
-
-export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, base }: Props) {
+export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, base, ownerLinks, publicUrl }: Props) {
   const [open, setOpen] = useState<string | null>(null)
+  const [share, setShare] = useState<'closed' | 'open' | 'welcome'>('closed')
+  useEffect(() => {
+    // Straight from paying: let the flyover land first, then the links.
+    if (typeof window === 'undefined' || !new URLSearchParams(window.location.search).has('welcome')) return
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const t = window.setTimeout(() => setShare('welcome'), reduce ? 600 : 6200)
+    window.history.replaceState(null, '', window.location.pathname)
+    return () => window.clearTimeout(t)
+  }, [])
   const segs = state.route.segments
   const toGo = Math.max(0, state.route.totalKm - state.position.km)
   const seg = state.position.segment
@@ -59,8 +61,9 @@ export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, b
             </span>
             <span className="hero-name">{shortName(segs[0]?.from)} → {shortName(segs[segs.length - 1]?.to)}</span>
           </div>
-          <button className="hero-btn" onClick={() => share(state)} aria-label="Share this walk">
+          <button className="hero-share" onClick={() => setShare('open')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12 3v12M8 7l4-4 4 4M5 14v5h14v-5" /></svg>
+            <span>Share</span>
           </button>
         </div>
       </section>
@@ -142,6 +145,7 @@ export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, b
       </section>
 
       {open && <Lightbox state={state} id={open} onClose={() => setOpen(null)} />}
+      {share !== 'closed' && <ShareSheet name={state.walk.name} publicUrl={publicUrl} code={state.walk.code} ownerLinks={ownerLinks} welcome={share === 'welcome'} onClose={() => setShare('closed')} />}
     </>
   )
 }
