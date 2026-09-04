@@ -20,6 +20,10 @@ type Props = {
   // Fired once the satellite imagery has landed, so anything that talks about
   // what's on the map can wait until there is a map to talk about.
   onReady?: () => void
+  // While true the opening flight waits. The welcome sheet sits over the map,
+  // and a flight behind it is a flight nobody sees. Released, it starts at
+  // once rather than after the usual beat.
+  holdFlight?: boolean
   // A fact chosen from the stage card in the sheet: fly to it and open it.
   focusLore?: { id: string; n: number } | null
 }
@@ -44,10 +48,15 @@ function pointAt(points: [number, number, number][], km: number): [number, numbe
   return [l[0], l[1]]
 }
 
-export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOpenPost, onReady: onReadyProp, focusLore }: Props) {
+export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOpenPost, onReady: onReadyProp, holdFlight, focusLore }: Props) {
   // Kept in a ref so a changing callback never re-runs the map's setup effect.
   const readyCb = useRef(onReadyProp)
   readyCb.current = onReadyProp
+  const holdRef = useRef(holdFlight)
+  holdRef.current = holdFlight
+  // The flight the map wanted to run while something was over it.
+  const heldFlight = useRef<(() => void) | null>(null)
+  const flightRaf = useRef<number | null>(null)
   const el = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const showLoreRef = useRef<((id: string) => void) | null>(null)
@@ -357,38 +366,102 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
           container?.classList.add('ready')
           try { window.clearTimeout(cap); map.off('idle', go) } catch { /* map already gone */ }
           readyCb.current?.()
-          window.setTimeout(() => { if (mapRef.current) fn() }, reduce ? 0 : 700)
+          const fly = () => { if (mapRef.current) fn() }
+          if (holdRef.current) heldFlight.current = fly
+          else window.setTimeout(fly, reduce ? 0 : 700)
         }
         const cap = window.setTimeout(go, READY_CAP_MS)
         map.on('idle', go)
       }
 
-      if (state.started && !state.finished) {
-        // Land on the story, not on a hillside: sit behind them, looking the
-        // way they are walking, with the last stretch of gold and the
-        // photographs on it filling the frame. Fixed scale beats fitting a
-        // bounding box, which a 50-degree pitch throws off badly.
-        const behind = pointAt(pts, Math.max(0, km - 9))
-        const from = pointAt(pts, Math.max(0, km - 26))
-        const heading = (() => {
-          const dx = (cut[0] - from[0]) * Math.cos(cut[1] * Math.PI / 180), dy = cut[1] - from[1]
-          if (!dx && !dy) return -18
-          return (Math.atan2(dx, dy) * 180) / Math.PI    // 0 = north, the way they're going
-        })()
-        // Early on there is little walked line, so sit closer in.
-        const zoom = km < 6 ? 12.4 : km < 16 ? 11.6 : 11.0
-        onReady(() => map.flyTo({ center: behind, zoom, pitch: terrainUrl ? 52 : 42, bearing: heading, duration: reduce ? 0 : 3400, essential: true }))
-      } else if (!state.started) {
-        // Countdown: a slow push-in onto the start, so the relief shows
-        onReady(() => map.flyTo({ center: cut, zoom: 10.4, pitch: terrainUrl ? 50 : 35, bearing: -12, duration: reduce ? 0 : 4200, essential: true }))
+      // The opening move retraces the walk rather than dropping onto the end
+      // of it. The camera lands on where they set off, then runs the gold line
+      // north — banking with every bend, closing in as it goes — and comes to
+      // rest on them. The whole point of the thing is the line getting longer,
+      // so the first thing it does is show the line.
+      const START_Z = 11.0, END_Z = 12.9
+      const START_P = terrainUrl ? 46 : 38, END_P = terrainUrl ? 58 : 48
+      const total = state.route.totalKm
+
+      // Which way the path is running at a given kilometre. 0 = north, so it
+      // can be handed straight to the camera as a bearing.
+      const headingAt = (atKm: number) => {
+        const a = pointAt(pts, Math.max(0, atKm - 2.5))
+        const b = pointAt(pts, Math.min(total, atKm + 2.5))
+        const dx = (b[0] - a[0]) * Math.cos((b[1] * Math.PI) / 180), dy = b[1] - a[1]
+        return !dx && !dy ? 0 : (Math.atan2(dx, dy) * 180) / Math.PI
+      }
+
+      // A hand on the map ends the flight; being flown somewhere you didn't
+      // ask for, while you're trying to look at something, is maddening.
+      const stopFlight = () => {
+        if (flightRaf.current) { cancelAnimationFrame(flightRaf.current); flightRaf.current = null }
+        map.stop()
+      }
+      for (const ev of ['mousedown', 'touchstart', 'wheel']) {
+        map.getCanvas().addEventListener(ev, stopFlight, { passive: true })
+      }
+
+      const trackWalk = () => {
+        // A long walk shouldn't take proportionally longer to fly over.
+        const trackMs = Math.min(6000, 2400 + km * 26)
+        map.flyTo({ center: pointAt(pts, 0), zoom: START_Z, pitch: START_P, bearing: headingAt(0), duration: 1300, essential: true })
+        map.once('moveend', () => {
+          if (!mapRef.current) return
+          let bearing = headingAt(0)
+          const t0 = performance.now()
+          const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2)
+          const step = (now: number) => {
+            if (!mapRef.current) return
+            const p = Math.min(1, (now - t0) / trackMs)
+            const e = ease(p)
+            const atKm = km * e
+            // The bearing chases the path rather than snapping to it, so a
+            // wiggly stretch of coast doesn't throw the camera about.
+            const want = headingAt(atKm)
+            bearing += (((want - bearing + 540) % 360) - 180) * 0.14
+            map.jumpTo({
+              center: pointAt(pts, atKm),
+              bearing,
+              zoom: START_Z + (END_Z - START_Z) * e,
+              pitch: START_P + (END_P - START_P) * e,
+            })
+            if (p < 1) flightRaf.current = requestAnimationFrame(step)
+            else flightRaf.current = null
+          }
+          flightRaf.current = requestAnimationFrame(step)
+        })
+      }
+
+      const restOnThem = () => map.jumpTo({ center: cut, zoom: END_Z, pitch: END_P, bearing: headingAt(km) })
+
+      if (state.started) {
+        // Nothing to retrace on day one, and reduced motion gets the
+        // destination without the journey.
+        onReady(reduce || km < 2 ? restOnThem : trackWalk)
       } else {
-        // Finished: no flight, but the imagery still has to be faded up.
-        onReady(() => {})
+        // Before day one there is no line to run, so: a slow push-in onto the
+        // start, close enough to read the relief they're about to walk into.
+        onReady(() => map.flyTo({ center: cut, zoom: 11.4, pitch: terrainUrl ? 52 : 38, bearing: headingAt(0), duration: reduce ? 0 : 4200, essential: true }))
       }
     })
-    return () => { map.remove(); mapRef.current = null }
+    return () => {
+      if (flightRaf.current) { cancelAnimationFrame(flightRaf.current); flightRaf.current = null }
+      heldFlight.current = null
+      map.remove(); mapRef.current = null
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Released: fly now, with no delay — the tap that closed the sheet is the
+  // cue, and a pause after it just reads as lag.
+  useEffect(() => {
+    if (holdFlight) return
+    const f = heldFlight.current
+    if (!f) return
+    heldFlight.current = null
+    f()
+  }, [holdFlight])
 
   useEffect(() => {
     if (focusLore && showLoreRef.current) showLoreRef.current(focusLore.id)

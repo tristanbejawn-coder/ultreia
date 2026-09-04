@@ -25,12 +25,19 @@ export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, b
   // once, over the map, then never again on this device.
   const [intro, setIntro] = useState(false)
   const [pending, setPending] = useState(false)
+  // Until storage has been read, the flight waits too: it must not set off a
+  // moment before a sheet lands on top of it.
+  const [decided, setDecided] = useState(false)
   useEffect(() => {
     if (typeof window === 'undefined') return
     // The paid-owner welcome owns the first moment; don't stack two sheets.
-    if (new URLSearchParams(window.location.search).has('welcome')) return
-    if (!hasSeenWelcome(state.walk.slug)) setPending(true)
+    const owner = new URLSearchParams(window.location.search).has('welcome')
+    if (!owner && !hasSeenWelcome(state.walk.slug)) setPending(true)
+    setDecided(true)
   }, [state.walk.slug])
+  // The flyover is the best thing on the page and it was playing out behind
+  // the welcome sheet, unwatched. Hold it until there's nothing over the map.
+  const holdFlight = !decided || pending || intro
   const closeIntro = () => { markWelcomeSeen(state.walk.slug); setIntro(false) }
   // A fact chosen from a stage card. The counter makes choosing the same one
   // twice still send the map back to it.
@@ -78,7 +85,8 @@ export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, b
     <>
       <section className="hero">
         <RouteMap state={state} tileUrl={tileUrl} attribution={attribution} terrainUrl={terrainUrl} onOpenPost={setOpen} focusLore={focusLore}
-          onReady={() => { if (pending) { setPending(false); setIntro(true) } }} />
+          onReady={() => { if (pending) { setPending(false); setIntro(true) } }}
+          holdFlight={holdFlight} />
         <div className="hero-top">
           <div className="hero-title">
             <span className="hero-who">
