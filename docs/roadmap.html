@@ -1,0 +1,237 @@
+<title>Ultreia Roadmap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..100,500..900&family=DM+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+:root{
+  --ground:#E7E9E6; --surface:#F5F6F3; --sunk:#DDE0DC;
+  --ink:#1B2430; --ink-2:#59646F; --ink-3:#8A939B; --line:#CBD1CC;
+  --arrow:#E09B0B; --arrow-ink:#8A6206; --azul:#2B5F8E; --euc:#6E7F6A; --warn:#B5473A;
+  --shadow:0 1px 2px rgba(27,36,48,.06),0 8px 24px -16px rgba(27,36,48,.28);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#14181C; --surface:#1C2229; --sunk:#10151A;
+    --ink:#E4E7E4; --ink-2:#9BA5AD; --ink-3:#6E7982; --line:#2E363E;
+    --arrow:#F0B429; --arrow-ink:#F0B429; --azul:#82B2DD; --euc:#96A790; --warn:#E07B6E;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -18px rgba(0,0,0,.9);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#14181C; --surface:#1C2229; --sunk:#10151A;
+  --ink:#E4E7E4; --ink-2:#9BA5AD; --ink-3:#6E7982; --line:#2E363E;
+  --arrow:#F0B429; --arrow-ink:#F0B429; --azul:#82B2DD; --euc:#96A790; --warn:#E07B6E;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -18px rgba(0,0,0,.9);
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font-family:"Source Serif 4",Georgia,serif;font-size:16.5px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:900px;margin:0 auto;padding:0 24px 96px}
+.mono{font-family:"DM Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+.eyebrow{font-family:"DM Mono",ui-monospace,monospace;font-size:11.5px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin:0}
+.display{font-family:"Archivo","Arial Narrow","Helvetica Neue",Arial,sans-serif;font-stretch:62%;font-weight:900;text-transform:uppercase;line-height:.88}
+.mast{padding:56px 0 34px;border-bottom:1px solid var(--line)}
+h1{font-size:clamp(64px,12vw,140px);margin:8px 0 0}
+h1 span{color:var(--arrow-ink)}
+.standfirst{font-size:19px;line-height:1.5;color:var(--ink-2);max-width:56ch;margin:16px 0 0}
+
+/* the three dates that matter */
+.dates{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:30px 0 0}
+.date{background:var(--surface);border:1px solid var(--line);padding:14px 16px 12px}
+.date .k{font-family:"DM Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.date .v{font-family:"Archivo","Arial Narrow",Arial,sans-serif;font-stretch:62%;font-weight:900;text-transform:uppercase;font-size:34px;line-height:.9;margin-top:6px}
+.date .v small{font-size:.5em;color:var(--arrow-ink);margin-left:.15em}
+.date .s{font-size:13px;color:var(--ink-2);margin-top:6px}
+@media (max-width:560px){.dates{grid-template-columns:1fr}}
+
+/* legend */
+.legend{display:flex;flex-wrap:wrap;gap:8px 22px;margin:26px 0 0;font-family:"DM Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.legend span{display:inline-flex;align-items:center;gap:8px}
+
+/* spine */
+.track{position:relative;margin:34px 0 0;padding-left:34px}
+.track::before{content:"";position:absolute;left:8px;top:8px;bottom:8px;width:2px;background:var(--line)}
+.track.walked::before{background:var(--arrow)}
+.ms{position:relative;padding:0 0 38px}
+.ms:last-child{padding-bottom:0}
+.dot{position:absolute;left:-34px;top:6px;width:18px;height:18px;border-radius:50%;background:var(--ground);border:2px solid var(--line)}
+.dot.done{background:var(--arrow);border-color:var(--arrow)}
+.dot.now{background:var(--ground);border-color:var(--arrow);box-shadow:inset 0 0 0 4px var(--ground),inset 0 0 0 20px var(--arrow)}
+.dot.wait{background:var(--ground);border-color:var(--warn);border-style:dashed}
+.dot.next{background:var(--ground);border-color:var(--ink-3);border-style:dotted}
+.dot.today{width:22px;height:22px;left:-36px;top:4px;background:var(--ink);border-color:var(--ink)}
+.dot.today::after{content:"";position:absolute;inset:5px;border-radius:50%;background:var(--arrow)}
+.when{font-family:"DM Mono",ui-monospace,monospace;font-size:11.5px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--arrow-ink);margin:0 0 6px}
+.when i{font-style:normal;color:var(--ink-3);margin-left:10px;font-weight:400}
+h2{font-family:"Archivo","Arial Narrow",Arial,sans-serif;font-stretch:62%;font-weight:900;text-transform:uppercase;font-size:clamp(26px,3.6vw,36px);line-height:.92;margin:0 0 8px;text-wrap:balance}
+.ms p{margin:6px 0 0;max-width:64ch;color:var(--ink-2);font-size:15.5px}
+ul.items{list-style:none;margin:12px 0 0;padding:0;max-width:64ch}
+ul.items li{position:relative;padding:5px 0 5px 24px;font-size:15.5px;line-height:1.45;border-top:1px solid var(--line)}
+ul.items li:last-child{border-bottom:1px solid var(--line)}
+ul.items li::before{content:"";position:absolute;left:4px;top:13px;width:8px;height:8px;border-radius:50%;border:1.5px solid var(--ink-3)}
+ul.items li.done::before{background:var(--arrow);border-color:var(--arrow)}
+ul.items li.now::before{border-color:var(--arrow);background:linear-gradient(90deg,var(--arrow) 50%,transparent 50%)}
+ul.items li.wait::before{border-color:var(--warn);border-style:dashed}
+ul.items li.opt::before{border-style:dotted}
+ul.items li b{font-weight:600}
+ul.items li .you{font-family:"DM Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--warn);margin-left:8px;white-space:nowrap}
+ul.items li .opt-tag{font-family:"DM Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-left:8px;white-space:nowrap}
+.card{background:var(--sunk);border:1px solid var(--line);border-left:3px solid var(--warn);padding:16px 18px;margin:14px 0 0;max-width:64ch}
+.card .t{font-family:"DM Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--warn);margin:0 0 6px}
+.card p{margin:4px 0 0;color:var(--ink);font-size:15px}
+.risks{margin:52px 0 0;padding-top:34px;border-top:1px solid var(--line)}
+.risks h2{font-size:clamp(24px,3vw,30px)}
+.risk{display:grid;grid-template-columns:minmax(0,1fr);gap:4px 24px;padding:12px 0;border-bottom:1px solid var(--line);font-size:15px}
+@media (min-width:640px){.risk{grid-template-columns:200px minmax(0,1fr)}}
+.risk b{font-family:"Archivo","Arial Narrow",Arial,sans-serif;font-stretch:75%;font-weight:800;text-transform:uppercase;font-size:14.5px;letter-spacing:.02em;line-height:1.3}
+.risk span{color:var(--ink-2)}
+footer{margin-top:40px;font-family:"DM Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.06em;color:var(--ink-3)}
+footer a{color:var(--ink-2)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+<header class="mast">
+  <p class="eyebrow">Roadmap &middot; as of Friday 4 September 2026</p>
+  <h1 class="display">Ultreia <span>Roadmap</span></h1>
+  <p class="standfirst">Where the build is against the walk. Gold is done, half-gold is running, dashed red is waiting on you, dotted is ahead. Dates on the right of a milestone are the walk&rsquo;s, not the build&rsquo;s.</p>
+  <div class="dates">
+    <div class="date"><div class="k">Today</div><div class="v">Fri 4<small>Sep</small></div><div class="s">v1 code complete, live on GitHub, not yet deployed</div></div>
+    <div class="date"><div class="k">They leave</div><div class="v">Wed 9<small>Sep</small></div><div class="s">v1 must be on a phone by now. First stage the 10th</div></div>
+    <div class="date"><div class="k">Santiago</div><div class="v">~Tue 22<small>Sep</small></div><div class="s">12 coastal stages; the Espiritual would add a day</div></div>
+  </div>
+  <div class="legend">
+    <span><i class="dot done" style="position:static;width:12px;height:12px"></i> Done</span>
+    <span><i class="dot now" style="position:static;width:12px;height:12px;box-shadow:inset 0 0 0 2.5px var(--ground),inset 0 0 0 12px var(--arrow)"></i> Running</span>
+    <span><i class="dot wait" style="position:static;width:12px;height:12px"></i> Waiting on you</span>
+    <span><i class="dot next" style="position:static;width:12px;height:12px"></i> Ahead</span>
+  </div>
+</header>
+
+<div class="track">
+
+  <div class="ms">
+    <span class="dot done"></span>
+    <p class="when">Thu 3 &ndash; Fri 4 Sep<i>Build days 1&ndash;2</i></p>
+    <h2>Research, concept, and the whole of v1</h2>
+    <ul class="items">
+      <li class="done"><b>Research report.</b> Mobbin, Awwwards, the Camino app landscape; the gap nobody had built for.</li>
+      <li class="done"><b>Concept and plan</b>, four rounds; type system taken from San Rita; roles, screens, the message bundle.</li>
+      <li class="done"><b>Camino catalogue</b> with published distances, cross-checked; three real forks that Ju and Jit choose on the road.</li>
+      <li class="done"><b>Route engine.</b> Plan of segments to one polyline with kilometres; photos and check-ins snap onto it.</li>
+      <li class="done"><b>Coastal geometry</b> traced from OpenStreetMap, Porto to Redondela plus the Espiritual; lengths match the guidebooks.</li>
+      <li class="done"><b>Route page</b> on satellite: walked trail in gold, road ahead dotted, a camera that shows the route then dives to them.</li>
+      <li class="done"><b>Pictures</b> by stage with a lightbox and reactions. <b>The post</b>: prompted messages, name given once.</li>
+      <li class="done"><b>Walkers&rsquo; screen</b> behind private links: photo with caption, location from the picture or the phone, queued until there&rsquo;s signal; &ldquo;we&rsquo;re here&rdquo;; fork cards; tonight&rsquo;s bundle.</li>
+      <li class="done"><b>Their marker is their photo.</b> Drawn figures tried twice and retired to a fallback.</li>
+      <li class="done"><b>Repository</b> <span class="mono">tristanbejawn-coder/ultreia</span>, schema multi-walk from migration one.</li>
+    </ul>
+  </div>
+
+  <div class="ms">
+    <span class="dot today"></span>
+    <p class="when">Now</p>
+    <h2>Running in the background</h2>
+    <ul class="items">
+      <li class="now"><b>Inland geometry</b>, Redondela to Santiago and the Minho link. Portugal done, Galicia one chunk in five; the OSM mirror is slow. Straight lines stand in on the map meanwhile.</li>
+    </ul>
+  </div>
+
+  <div class="ms">
+    <span class="dot wait"></span>
+    <p class="when">Fri 4 &ndash; Sat 5 Sep<i>Nothing moves without these</i></p>
+    <h2>First deploy</h2>
+    <ul class="items">
+      <li class="wait"><b>Netlify</b>: import the repo, deploy once with no environment variables. Preview mode shows the real map.<span class="you">you</span></li>
+      <li class="wait"><b>Domain</b>: <span class="mono">ultreia.bejawn.studio</span> on the Netlify site, CNAME at your DNS.<span class="you">you</span></li>
+      <li class="wait"><b>Supabase</b> project; run migrations 001 and 002 with the two tokens replaced; URL and service key into Netlify.<span class="you">you</span></li>
+      <li><b>Check the imagery and the gold trail</b> against the real coast, which this sandbox can&rsquo;t show. Tune the halo, the label sizes, the dive.</li>
+    </ul>
+    <div class="card"><p class="t">Why it&rsquo;s gating</p><p>Every remaining check before the 9th &mdash; posting from a real phone, the map on real tiles, the install &mdash; needs a live URL and a database. The build itself is done; the next five days are testing on phones.</p></div>
+  </div>
+
+  <div class="ms">
+    <span class="dot next"></span>
+    <p class="when">Sat 6 &ndash; Mon 8 Sep<i>Rehearsal weekend</i></p>
+    <h2>Prove it on their phones</h2>
+    <ul class="items">
+      <li><b>Private links on both home screens.</b> Open <span class="mono">/go/&lt;token&gt;</span> on Ju&rsquo;s and Jit&rsquo;s phones, add to home screen, name it.</li>
+      <li><b>Sunday walk.</b> Both post photos from the garden or a real walk; confirm the location survives an iPhone upload and lands on the line. If it doesn&rsquo;t, the fallback to phone location is already built and the fix is in the crop step.</li>
+      <li><b>Family invited.</b> The public link out to everyone; names given once; send-off messages start piling up for the first evening.</li>
+      <li><b>Inland geometry committed</b> once the download completes; the whole route real.</li>
+      <li class="opt"><b>Push notifications</b> if there&rsquo;s time: generate VAPID keys, add to Netlify. Without them the app still works; followers refresh instead of being pinged.<span class="opt-tag">optional before the 9th</span></li>
+    </ul>
+  </div>
+
+  <div class="ms">
+    <span class="dot next"></span>
+    <p class="when">Wed 9 Sep<i>They leave &middot; Thu 10 first stage</i></p>
+    <h2>Live</h2>
+    <ul class="items">
+      <li><b>Countdown page</b> shows one day, then the first check-in from Porto cathedral turns it into the route.</li>
+      <li><b>First photos land</b> on the line. I watch for anything wrong with location, orientation or the queue during stage one and fix it in the day.</li>
+    </ul>
+  </div>
+
+  <div class="ms">
+    <span class="dot next"></span>
+    <p class="when">Thu 10 &ndash; Sun 14 Sep<i>Stages 1&ndash;5, Porto to Caminha</i></p>
+    <h2>Voices</h2>
+    <p>Ships underneath them while they walk; nothing to update on their side.</p>
+    <ul class="items">
+      <li><b>30-second clips and the diary</b> through Cloudflare Stream, cap enforced server-side, poster frames, plays on every phone.<span class="you">needs a Cloudflare account + token</span></li>
+      <li><b>Diary prompts</b> rotating on the walkers&rsquo; screen; diary entries drawn as play rings on the trail.</li>
+      <li><b>Push and the 19:00 bundle.</b> A scheduled function delivers the day&rsquo;s messages to the walkers at once; followers get a push when a stage completes.<span class="you">needs VAPID keys</span></li>
+      <li><b>The Caminha fork</b> surfaces on their screen around stage four. They choose; the family&rsquo;s map redraws.</li>
+    </ul>
+  </div>
+
+  <div class="ms">
+    <span class="dot next"></span>
+    <p class="when">Mon 15 &ndash; Sun 21 Sep<i>Stages 6&ndash;11, Galicia</i></p>
+    <h2>Depth</h2>
+    <ul class="items">
+      <li><b>Elevation profile</b> per stage in the stage card.</li>
+      <li><b>Marker clustering</b> when the map is zoomed out; by now it&rsquo;s full.</li>
+      <li><b>The Pontevedra fork</b>: straight on, or the Espiritual with the boat.</li>
+      <li><b>The arrival screen</b> for Santiago, built and tested before they get there.</li>
+      <li class="opt"><b>Transcripts</b> under diaries, making the walk searchable and printable.<span class="opt-tag">optional</span></li>
+    </ul>
+  </div>
+
+  <div class="ms">
+    <span class="dot next"></span>
+    <p class="when">~Tue 22 Sep<i>Praza do Obradoiro</i></p>
+    <h2>Santiago</h2>
+    <ul class="items">
+      <li><b>The line completes</b>, the tile arrives at the shell, the page becomes the record: every photo in order, every message with a name and a stage, the total.</li>
+    </ul>
+  </div>
+
+  <div class="ms">
+    <span class="dot next"></span>
+    <p class="when">October onward<i>After the walk</i></p>
+    <h2>Ultreia for other walkers</h2>
+    <p>The house exists; this is the front door. Nothing here changes what Ju and Jit use.</p>
+    <ul class="items">
+      <li><b>Sign-in</b> by email magic link; a walk belongs to an owner.</li>
+      <li><b>Route picker</b> on the catalogue: choose a Camino, its variants, adjust stages, name the walkers, upload the photo.</li>
+      <li><b>One-off payment per walk</b> through Stripe Checkout; following stays free and account-free.<span class="you">Stripe account, terms &amp; privacy page</span></li>
+      <li><b>Paid map tiles</b> (MapTiler or Mapbox) once it&rsquo;s a product; the free imagery is fine for one family.</li>
+      <li><b>The printed book</b> of Ju and Jit&rsquo;s walk, laid out from the same data.</li>
+    </ul>
+  </div>
+
+</div>
+
+<section class="risks">
+  <h2 class="display">What could bite, and the answer</h2>
+  <div class="risk"><b>Photo location on iPhone</b><span>iOS sometimes hands the browser a converted copy without GPS. Rehearsal Sunday tests it; the phone&rsquo;s own location is the built-in fallback and the day&rsquo;s check-in the fallback behind that.</span></div>
+  <div class="risk"><b>Signal in Galicia</b><span>Posts queue on the phone and drain when a bar appears; the public page keeps its last state offline. Nothing they do needs a connection at the moment they do it.</span></div>
+  <div class="risk"><b>The Caminha boat</b><span>It runs on tide and weather. That&rsquo;s exactly why the fork is chosen on the day, from their screen, not planned.</span></div>
+  <div class="risk"><b>Video before the cap works</b><span>Clips don&rsquo;t ship until Cloudflare enforces the 30 seconds server-side, so there is no window where a long video can break playback.</span></div>
+  <div class="risk"><b>Imagery licensing</b><span>Free Esri tiles with attribution are fine for a family page. The moment other walkers pay, tiles move to a keyed provider on a paid plan.</span></div>
+  <div class="risk"><b>Me, mid-walk</b><span>Every drop after the 9th is additive and deploys from <span class="mono">main</span>; if something goes wrong the previous deploy is one click back in Netlify.</span></div>
+</section>
+
+<footer>Code: <a href="https://github.com/tristanbejawn-coder/ultreia">github.com/tristanbejawn-coder/ultreia</a> &middot; Plan: the Ultreia concept &amp; build document &middot; Route data &copy; OpenStreetMap contributors</footer>
+</div>
