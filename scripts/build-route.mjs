@@ -30,31 +30,33 @@ const UA = 'ultreia-route-builder/0.1 (camino walk tracker; contact via github t
 // OSM relation ids (see catalogue notes). bbox = [south, west, north, east]
 const COSTA = 6100606, CENTRAL = 7684546, ESPIRITUAL = 6259246
 const SOURCES = {
-  'porto-matosinhos':         { rel: [COSTA], bbox: [41.13, -8.72, 41.20, -8.58] },
+  // Coastal: whole relations (rel-<id>.json) or Costa ways clipped near Porto
+  'porto-matosinhos':         { rel: [COSTA, 9044581, 17600329], bbox: [41.13, -8.72, 41.20, -8.58] },
   'matosinhos-vila-do-conde': { rel: [17600329, 18091699] },
-  'vila-do-conde-esposende':  { rel: [18091819, 18165121], bbox: [41.34, -8.80, 41.55, -8.70] },
-  'esposende-viana':          { rel: [18165121], bbox: [41.52, -8.85, 41.71, -8.70] },
-  'viana-caminha':            { rel: [18168169], bbox: [41.68, -8.90, 41.89, -8.78] },
-  'a-guarda-a-ramallosa':     { rel: [18173128] },
-  'a-ramallosa-vigo':         { rel: [18173296] },
-  'vigo-redondela':           { rel: [12786089], bbox: [42.22, -8.75, 42.30, -8.58] },
+  'vila-do-conde-esposende':  { rel: [18091819, 18165121] },
+  'esposende-viana':          { rel: [18165121] },
+  'viana-caminha':            { rel: [18168169] },
+  'a-guarda-a-ramallosa':     { rel: [12786089, 18173128] },
+  'a-ramallosa-vigo':         { rel: [12786089, 18173296] },
+  'vigo-redondela':           { rel: [12786089] },
   'caminha-valenca':          { rel: [COSTA], bbox: [41.86, -8.86, 42.05, -8.62] },
-  'valenca-tui':              { rel: [CENTRAL], bbox: [42.02, -8.66, 42.06, -8.62] },
-  'tui-o-porrino':            { rel: [CENTRAL], bbox: [42.04, -8.66, 42.17, -8.60] },
-  'o-porrino-redondela':      { rel: [CENTRAL], bbox: [42.15, -8.66, 42.29, -8.58] },
-  'redondela-pontevedra':     { rel: [CENTRAL], bbox: [42.27, -8.68, 42.44, -8.58] },
-  'pontevedra-caldas':        { rel: [CENTRAL], bbox: [42.42, -8.68, 42.61, -8.60] },
-  'caldas-padron':            { rel: [CENTRAL], bbox: [42.60, -8.68, 42.75, -8.60] },
-  'padron-santiago':          { rel: [CENTRAL], bbox: [42.73, -8.68, 42.89, -8.52] },
-  'pontevedra-armenteira':    { rel: [ESPIRITUAL], bbox: [42.42, -8.76, 42.52, -8.62] },
-  'armenteira-vilanova':      { rel: [ESPIRITUAL], bbox: [42.49, -8.85, 42.58, -8.70] },
-  // Central from Porto
-  'porto-vilarinho':          { rel: [CENTRAL], bbox: [41.13, -8.68, 41.34, -8.58] },
-  'vilarinho-barcelos':       { rel: [CENTRAL], bbox: [41.32, -8.70, 41.54, -8.58] },
-  'barcelos-ponte-de-lima':   { rel: [CENTRAL], bbox: [41.52, -8.66, 41.78, -8.56] },
-  'ponte-de-lima-rubiaes':    { rel: [CENTRAL], bbox: [41.75, -8.66, 41.93, -8.56] },
-  'rubiaes-valenca':          { rel: [CENTRAL], bbox: [41.91, -8.68, 42.04, -8.58] },
+  'pontevedra-armenteira':    { rel: [ESPIRITUAL] },
+  'armenteira-vilanova':      { rel: [ESPIRITUAL] },
+  // Central: ways fetched in chunks per country box (see scripts/raw/central-chunks-*)
+  'valenca-tui':              { central: 'es' },
+  'tui-o-porrino':            { central: 'es' },
+  'o-porrino-redondela':      { central: 'es' },
+  'redondela-pontevedra':     { central: 'es' },
+  'pontevedra-caldas':        { central: 'es' },
+  'caldas-padron':            { central: 'es' },
+  'padron-santiago':          { central: 'es' },
+  'porto-vilarinho':          { central: 'pt' },
+  'vilarinho-barcelos':       { central: 'pt' },
+  'barcelos-ponte-de-lima':   { central: 'pt' },
+  'ponte-de-lima-rubiaes':    { central: 'pt' },
+  'rubiaes-valenca':          { central: 'pt' },
 }
+const CENTRAL_DIRS = { pt: 'central-chunks-41.10_-8.75_42.06_-8.50', es: 'central-chunks-42.02_-8.75_42.90_-8.40' }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
@@ -73,56 +75,131 @@ async function overpass(query) {
   throw lastErr
 }
 
+// Members of a relation fetched with `out geom` look like ways with geometry.
+function relationWays(data) {
+  const out = []
+  for (const e of data.elements || []) {
+    if (e.type === 'way' && e.geometry) out.push(e)
+    if (e.type === 'relation') for (const m of e.members || []) if (m.type === 'way' && m.geometry) out.push({ type: 'way', id: m.ref, geometry: m.geometry })
+  }
+  return out
+}
+
 async function fetchWays(relId, bbox) {
+  // Preferred cache: whole relation geometry (small relations)
+  const relFile = path.join(RAW, `rel-${relId}.json`)
+  if (!bbox && existsSync(relFile)) return relationWays(JSON.parse(await readFile(relFile, 'utf8')))
   const key = `${relId}${bbox ? '_' + bbox.join('_') : ''}`
   const file = path.join(RAW, key + '.json')
-  if (existsSync(file)) return JSON.parse(await readFile(file, 'utf8'))
+  if (existsSync(file)) return relationWays(JSON.parse(await readFile(file, 'utf8')))
   if (OFFLINE) throw new Error(`no cache for ${key}`)
   const clip = bbox ? `(${bbox.join(',')})` : ''
-  const q = `[out:json][timeout:120];rel(${relId});way(r)${clip};out geom;`
+  const q = bbox ? `[out:json][timeout:120];rel(${relId});way(r)${clip};out geom;` : `[out:json][timeout:120];rel(${relId});out geom;`
   const data = await overpass(q)
   await mkdir(RAW, { recursive: true })
-  await writeFile(file, JSON.stringify(data))
+  await writeFile(bbox ? file : relFile, JSON.stringify(data))
   await sleep(2500)
-  return data
+  return relationWays(data)
+}
+
+async function centralWays(country) {
+  const dir = path.join(RAW, CENTRAL_DIRS[country])
+  if (!existsSync(dir)) throw new Error(`no Central chunks for ${country} (run scripts/fetch-central.sh)`)
+  const { readdir } = await import('node:fs/promises')
+  let ways = []
+  for (const f of (await readdir(dir)).filter(f => f.endsWith('.json')).sort()) {
+    const text = await readFile(path.join(dir, f), 'utf8')
+    if (!text.trimStart().startsWith('{')) continue   // a failed download parked here; the fetch script retries it
+    ways = ways.concat(relationWays(JSON.parse(text)))
+  }
+  return ways
 }
 
 const keyOf = c => `${c[0].toFixed(6)},${c[1].toFixed(6)}`
 
-// Greedy stitch: start from the way nearest `from`, keep appending the way
-// whose endpoint is closest to the growing line's end, until we reach `to`.
-function stitch(ways, from, to) {
-  const lines = ways.filter(w => w.geometry && w.geometry.length > 1).map(w => w.geometry.map(p => [p.lon, p.lat]))
-  if (!lines.length) return []
+// Route relations branch (Litoral and Costa variants share one relation,
+// ways connect at interior nodes), so a greedy end-to-end stitch is not
+// reliable. Instead: every consecutive coordinate pair in every way is an
+// edge of a graph; the segment is the shortest path from the graph node
+// nearest `from` to the one nearest `to`.
+function stitchOnce(ways, from, to, bridge) {
+  const key = c => c[0].toFixed(6) + ',' + c[1].toFixed(6)
+  const nodes = new Map()      // key -> [lng,lat]
+  const adj = new Map()        // key -> [{k, w}]
   const dist = (a, b) => Math.hypot((a[0] - b[0]) * Math.cos(a[1] * Math.PI / 180), a[1] - b[1])
-  // seed: line with an endpoint nearest `from`
-  let bestI = 0, bestD = Infinity, flip = false
-  lines.forEach((l, i) => {
-    const d0 = dist(l[0], from), d1 = dist(l[l.length - 1], from)
-    if (d0 < bestD) { bestD = d0; bestI = i; flip = false }
-    if (d1 < bestD) { bestD = d1; bestI = i; flip = true }
-  })
-  let out = flip ? [...lines[bestI]].reverse() : [...lines[bestI]]
-  const used = new Set([bestI])
-  const TOL = 0.0025 // ~250 m: OSM relations have gaps at ferries and bridges
-  for (let guard = 0; guard < lines.length; guard++) {
-    const end = out[out.length - 1]
-    if (dist(end, to) < 0.004) break
-    let ni = -1, nd = Infinity, nflip = false
-    lines.forEach((l, i) => {
-      if (used.has(i)) return
-      const d0 = dist(l[0], end), d1 = dist(l[l.length - 1], end)
-      if (d0 < nd) { nd = d0; ni = i; nflip = false }
-      if (d1 < nd) { nd = d1; ni = i; nflip = true }
-    })
-    if (ni < 0 || nd > TOL * 8) break
-    const l = nflip ? [...lines[ni]].reverse() : lines[ni]
-    // Avoid heading away from the destination on branch/loop ways
-    if (dist(l[l.length - 1], to) > dist(end, to) + 0.02) { used.add(ni); continue }
-    out = out.concat(l.slice(nd < 1e-9 ? 1 : 0))
-    used.add(ni)
+  const link = (a, b) => {
+    const ka = key(a), kb = key(b)
+    if (!nodes.has(ka)) { nodes.set(ka, a); adj.set(ka, []) }
+    if (!nodes.has(kb)) { nodes.set(kb, b); adj.set(kb, []) }
+    const w = dist(a, b)
+    adj.get(ka).push({ k: kb, w }); adj.get(kb).push({ k: ka, w })
   }
-  return out
+  for (const w of ways) {
+    if (!w.geometry || w.geometry.length < 2) continue
+    const g = w.geometry.map(p => [p.lon, p.lat])
+    for (let i = 1; i < g.length; i++) link(g[i - 1], g[i])
+  }
+  if (!nodes.size) return []
+  // Bridge small gaps between way endpoints (bridges, ferries, a missing
+  // way): anything under ~200 m becomes an edge.
+  const ends = []
+  for (const w of ways) {
+    if (!w.geometry || w.geometry.length < 2) continue
+    const g = w.geometry; ends.push([g[0].lon, g[0].lat], [g[g.length - 1].lon, g[g.length - 1].lat])
+  }
+  for (let i = 0; i < ends.length; i++) for (let j = i + 1; j < ends.length; j++) {
+    const d = dist(ends[i], ends[j]); if (d > 0 && d < bridge) link(ends[i], ends[j])
+  }
+  // Connected components; choose the one that comes closest to both towns.
+  const comp = new Map(); let nComp = 0
+  for (const k0 of nodes.keys()) {
+    if (comp.has(k0)) continue
+    const id = nComp++; const stack = [k0]; comp.set(k0, id)
+    while (stack.length) { const k = stack.pop(); for (const e of adj.get(k)) if (!comp.has(e.k)) { comp.set(e.k, id); stack.push(e.k) } }
+  }
+  const bestIn = new Array(nComp).fill(null).map(() => ({ src: null, sd: Infinity, dst: null, dd: Infinity }))
+  for (const [k, c] of nodes) {
+    const b = bestIn[comp.get(k)]
+    const df = dist(c, from), dt = dist(c, to)
+    if (df < b.sd) { b.sd = df; b.src = k }
+    if (dt < b.dd) { b.dd = dt; b.dst = k }
+  }
+  let pick = bestIn[0]
+  for (const b of bestIn) if (b.sd + b.dd < pick.sd + pick.dd) pick = b
+  const src = pick.src, dst = pick.dst
+  // Dijkstra with a simple binary heap
+  const best = new Map([[src, 0]]), prev = new Map()
+  const heap = [[0, src]]
+  const push = x => { heap.push(x); let i = heap.length - 1; while (i > 0) { const j = (i - 1) >> 1; if (heap[j][0] <= heap[i][0]) break; [heap[i], heap[j]] = [heap[j], heap[i]]; i = j } }
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[i], heap[m]] = [heap[m], heap[i]]; i = m } } return top }
+  while (heap.length) {
+    const [d, k] = pop()
+    if (k === dst) break
+    if (d > (best.get(k) ?? Infinity)) continue
+    for (const e of adj.get(k)) {
+      const nd = d + e.w
+      if (nd < (best.get(e.k) ?? Infinity)) { best.set(e.k, nd); prev.set(e.k, k); push([nd, e.k]) }
+    }
+  }
+  if (!best.has(dst)) return []
+  const out = []
+  for (let k = dst; k; k = prev.get(k)) { out.push(nodes.get(k)); if (k === src) break }
+  return out.reverse()
+}
+
+// Try tight bridging first; widen only if the line stops well short of a town.
+function stitch(ways, from, to) {
+  const dist = (a, b) => Math.hypot((a[0] - b[0]) * Math.cos(a[1] * Math.PI / 180), a[1] - b[1])
+  let best = [], bestScore = Infinity
+  for (const bridge of [0.002, 0.008, 0.02, 0.04]) {
+    const line = stitchOnce(ways, from, to, bridge)
+    if (line.length < 2) continue
+    const score = dist(line[0], from) + dist(line[line.length - 1], to)
+    // A wider bridge must buy at least ~1 km of reach, or it is just a shortcut.
+    if (score < bestScore - 0.01) { best = line; bestScore = score }
+    if (bestScore < 0.02) break
+  }
+  return best
 }
 
 function trim(line, from, to) {
@@ -180,16 +257,16 @@ for (const [id, spec] of Object.entries(SOURCES)) {
   if (!from || !to) { console.warn(`skip ${id}: unknown nodes`); continue }
   try {
     let ways = []
-    for (const rel of spec.rel) {
-      const data = await fetchWays(rel, spec.bbox)
-      ways = ways.concat((data.elements || []).filter(e => e.type === 'way'))
-    }
+    if (spec.central) ways = await centralWays(spec.central)
+    else for (const [i, rel] of spec.rel.entries()) ways = ways.concat(await fetchWays(rel, i === 0 ? spec.bbox : undefined))
     let line = stitch(ways, from, to)
     line = trim(line, from, to)
     if (line.length < 2) { console.warn(`empty ${id}`); continue }
     const km = lengthKm(line)
+    const gap = (a, b) => (Math.hypot((a[0] - b[0]) * Math.cos(a[1] * Math.PI / 180), a[1] - b[1]) * 111).toFixed(1)
+    const endNote = `ends ${gap(line[0], from)}/${gap(line[line.length - 1], to)} km from towns`
     out[id] = { id, coords: simplify(line).map(c => [+c[0].toFixed(5), +c[1].toFixed(5)]), km: +km.toFixed(2) }
-    console.log(`${id.padEnd(26)} ${String(out[id].coords.length).padStart(5)} pts  ${km.toFixed(1)} km`)
+    console.log(`${id.padEnd(26)} ${String(out[id].coords.length).padStart(5)} pts  ${km.toFixed(1).padStart(5)} km   ${endNote}`)
   } catch (e) {
     console.warn(`FAILED ${id}: ${e.message}`)
   }
