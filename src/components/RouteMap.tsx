@@ -264,7 +264,12 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         const dot = document.createElement('i'); dot.className = 'dot'
         const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = l.label
         m.append(dot, tag)
-        layer(new maplibregl.Marker({ element: m, anchor: 'center' }).setLngLat(l.at).addTo(map), 1)
+        // opacity/opacityWhenCovered: MapLibre writes an inline opacity on
+        // every marker to fade the ones terrain hides, and an inline style
+        // beats a class — so a fact "hidden" by class stayed on screen as a
+        // ghost that could not be tapped. Told to leave opacity alone, the
+        // showing and hiding below is the only thing that moves.
+        layer(new maplibregl.Marker({ element: m, anchor: 'center', opacity: '1', opacityWhenCovered: '1' }).setLngLat(l.at).addTo(map), 1)
         loreMarks.push({ l, el: m, dot, shown: false })
       }
 
@@ -310,6 +315,7 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
             if (show) taken.push(at)
           }
           f.shown = show
+          f.el.style.display = show ? '' : 'none'
           f.el.classList.toggle('on', show)
           f.el.classList.toggle('named', show && named)
         }
