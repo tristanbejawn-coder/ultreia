@@ -292,11 +292,15 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         const z = map.getZoom()
         const on = z >= 9.4, named = z >= 11.6
         const box = map.getContainer().getBoundingClientRect()
+        const head = headerPx()
         const taken = occupied.map(e => centreOf(e, box))
         for (const f of loreMarks) {
           let show = on
           if (show) {
             const at = centreOf(f.dot, box)
+            // Never under the header, where the name would collide with the
+            // walkers' own and nothing can be tapped anyway.
+            if (at.y < head) show = false
             for (const t of taken) if (Math.hypot(at.x - t.x, at.y - t.y) < CLEAR_PX) { show = false; break }
             if (show) taken.push(at)
           }
