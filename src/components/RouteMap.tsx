@@ -304,6 +304,9 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         const box = map.getContainer().getBoundingClientRect()
         const head = headerPx()
         const taken = occupied.map(e => centreOf(e, box))
+        // Everything back on screen before measuring: a hidden element has no
+        // position, so measuring while hidden would latch it off for good.
+        for (const f of loreMarks) f.el.style.display = ''
         for (const f of loreMarks) {
           let show = on
           if (show) {
