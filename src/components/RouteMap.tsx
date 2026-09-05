@@ -100,6 +100,13 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
       map.addLayer({ id: 'walked-glow', type: 'line', source: 'walked', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#F0B429', 'line-width': 16, 'line-opacity': 0.28, 'line-blur': 6 } })
       map.addLayer({ id: 'walked-line', type: 'line', source: 'walked', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#F0B429', 'line-width': 4 } })
 
+      // How much of the map the header covers. Installed to the home screen
+      // that includes the status bar, so it is measured, not assumed.
+      const headerPx = () => {
+        const h = map.getContainer().closest('.hero')?.querySelector('.hero-top') as HTMLElement | null
+        return h ? h.getBoundingClientRect().height : 120
+      }
+
       // Stage towns. Zoomed right out only the ends are named; the rest
       // appear once there's room for them.
       const labels: { el: HTMLElement; always: boolean }[] = []
@@ -114,7 +121,7 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
       const showLabels = () => {
         const z = map.getZoom()
         for (const l of labels) {
-          const under = l.el.getBoundingClientRect().top - map.getContainer().getBoundingClientRect().top < 120
+          const under = l.el.getBoundingClientRect().top - map.getContainer().getBoundingClientRect().top < headerPx()
           l.el.style.display = (l.always || z >= 9.2) && !under ? '' : 'none'
         }
       }
@@ -343,7 +350,7 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
 
       // Camera: whole route first, then dive to them
       const bounds = pts.reduce((b, p) => b.extend([p[0], p[1]]), new maplibregl.LngLatBounds(pts[0].slice(0, 2) as [number, number], pts[0].slice(0, 2) as [number, number]))
-      map.fitBounds(bounds, { padding: { top: 120, bottom: 110, left: 40, right: 40 }, duration: 0 })
+      map.fitBounds(bounds, { padding: { top: headerPx(), bottom: 110, left: 40, right: 40 }, duration: 0 })
       const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
       // Satellite tiles take a moment on a cold load, and the flyover used to

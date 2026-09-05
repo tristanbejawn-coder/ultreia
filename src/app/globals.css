@@ -8,6 +8,9 @@
   --mono:"DM Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
   --serif:"Source Serif 4",Georgia,"Times New Roman",serif;
   --safe-b:env(safe-area-inset-bottom,0px);
+  /* Installed to the home screen, the page runs under the status bar: the
+     clock and the battery sit on top of it, and iOS takes any tap there. */
+  --safe-t:env(safe-area-inset-top,0px);
 }
 @media (prefers-color-scheme:dark){
   :root{
@@ -69,19 +72,19 @@ img,video{max-width:100%;display:block}
 .map .maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-inner{display:none}
 .map .maplibregl-ctrl-attrib.maplibregl-compact:focus-within .maplibregl-ctrl-attrib-inner,.map .maplibregl-ctrl-attrib.maplibregl-compact:hover .maplibregl-ctrl-attrib-inner{display:block}
 .map .maplibregl-ctrl-bottom-right{z-index:3}
-.map .maplibregl-ctrl-top-right .maplibregl-ctrl{margin-top:64px}
+.map .maplibregl-ctrl-top-right .maplibregl-ctrl{margin-top:calc(64px + var(--safe-t))}
 .map .maplibregl-ctrl-attrib a{color:#9BA5AD}
-.hero-top{position:absolute;top:0;left:0;right:0;padding:16px 14px 0 14px;display:flex;justify-content:center;align-items:flex-start;pointer-events:none;min-height:120px;
+.hero-top{position:absolute;top:0;left:0;right:0;padding:calc(16px + var(--safe-t)) 14px 0 14px;display:flex;justify-content:center;align-items:flex-start;pointer-events:none;min-height:calc(120px + var(--safe-t));
   background:linear-gradient(to bottom,rgba(14,20,24,.78),rgba(14,20,24,0))}
 .hero-top *{pointer-events:auto}
 .hero-title{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:2px}
 .hero-who{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#C9D1D6}
 .hero-who img{width:22px;height:22px;border-radius:6px;border:1.5px solid #fff;object-fit:cover}
 .hero-name{font-family:var(--display);font-stretch:62%;font-weight:900;text-transform:uppercase;font-size:26px;line-height:1;color:#F0B429;letter-spacing:.01em;text-shadow:0 2px 12px rgba(0,0,0,.5)}
-.hero-btn{position:absolute;right:14px;top:16px;width:40px;height:40px;border-radius:12px;background:rgba(245,246,243,.14);border:1px solid rgba(255,255,255,.18);color:#F5F6F3;display:grid;place-items:center;cursor:pointer;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.hero-btn{position:absolute;right:14px;top:calc(16px + var(--safe-t));width:40px;height:40px;border-radius:12px;background:rgba(245,246,243,.14);border:1px solid rgba(255,255,255,.18);color:#F5F6F3;display:grid;place-items:center;cursor:pointer;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .hero-btn svg{width:18px;height:18px}
 .hero-btn:focus-visible{outline:2px solid var(--arrow);outline-offset:2px}
-.map .maplibregl-ctrl-top-right .maplibregl-ctrl{margin-top:70px}
+.map .maplibregl-ctrl-top-right .maplibregl-ctrl{margin-top:calc(70px + var(--safe-t))}
 
 /* the sheet */
 .sheet{position:relative;z-index:2;margin-top:-26px;background:var(--surface);border-radius:26px 26px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,.35);padding:0 0 12px;min-height:48vh}
@@ -189,7 +192,7 @@ button.chip.fact:hover,button.chip.fact:focus-visible{border-color:var(--arrow);
 .stage .thumbs .more{width:44px;height:44px;border-radius:2px;background:var(--sunk);display:grid;place-items:center;font-family:var(--mono);font-size:11px;color:var(--ink-2)}
 
 /* pictures */
-.pics{padding:16px}
+.pics{padding:calc(16px + var(--safe-t)) 16px 16px}
 .pics h1{font-family:var(--display);font-stretch:62%;font-weight:900;text-transform:uppercase;font-size:40px;line-height:.9;margin:8px 0 18px}
 .group{margin:0 0 26px}
 .group h2{font-family:var(--display);font-stretch:62%;font-weight:900;text-transform:uppercase;font-size:22px;line-height:.95;margin:0 0 2px}
@@ -249,7 +252,7 @@ button.chip.fact:hover,button.chip.fact:focus-visible{border-color:var(--arrow);
 .notice.warn{border-left-color:var(--arrow)}
 
 /* pilgrim (go) screen */
-.go{padding:16px}
+.go{padding:calc(16px + var(--safe-t)) 16px 16px}
 .go h1{font-family:var(--display);font-stretch:62%;font-weight:900;text-transform:uppercase;font-size:34px;line-height:.9;margin:8px 0 2px}
 .go .sub{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin:0 0 16px}
 /* The front door, at the foot of a walk anyone can see, and its quiet
@@ -336,7 +339,7 @@ button.chip.fact:hover,button.chip.fact:focus-visible{border-color:var(--arrow);
 .signin-expired .btn{display:inline-block;text-decoration:none}
 
 /* account */
-.account{padding:20px 18px 40px}
+.account{padding:calc(20px + var(--safe-t)) 18px 40px}
 .account-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:22px}
 .account-email{font-family:var(--mono);font-size:14px;color:var(--ink);margin-top:3px;word-break:break-all}
 .walk-card{background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:16px;padding:18px;margin-bottom:14px;display:flex;flex-direction:column;gap:14px}
@@ -383,13 +386,13 @@ button.chip.fact:hover,button.chip.fact:focus-visible{border-color:var(--arrow);
 .account .cta span{display:block;font-size:13.5px;color:var(--ink-3)}
 
 /* share */
-.hero-share{position:absolute;right:14px;top:16px;height:40px;padding:0 14px 0 12px;border-radius:12px;display:flex;align-items:center;gap:8px;cursor:pointer;
+.hero-share{position:absolute;right:14px;top:calc(16px + var(--safe-t));height:40px;padding:0 14px 0 12px;border-radius:12px;display:flex;align-items:center;gap:8px;cursor:pointer;
   background:rgba(245,246,243,.16);border:1px solid rgba(255,255,255,.22);color:#F5F6F3;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
   -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
 .hero-share svg{width:18px;height:18px}
 .hero-share:focus-visible{outline:2px solid var(--arrow);outline-offset:2px}
 /* The way back to the welcome sheet, mirroring Share across the header. */
-.hero-info{position:absolute;left:14px;top:16px;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;cursor:pointer;
+.hero-info{position:absolute;left:14px;top:calc(16px + var(--safe-t));width:40px;height:40px;border-radius:12px;display:grid;place-items:center;cursor:pointer;
   background:rgba(245,246,243,.16);border:1px solid rgba(255,255,255,.22);color:#F5F6F3;
   -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
 .hero-info svg{width:18px;height:18px}
