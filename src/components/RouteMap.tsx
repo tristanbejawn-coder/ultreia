@@ -102,9 +102,14 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
 
       // How much of the map the header covers. Installed to the home screen
       // that includes the status bar, so it is measured, not assumed.
+      // How far down the map the header reaches, in the map's own pixels: the
+      // page can be scrolled, so the header's height on the page is not the
+      // same number as the band it covers here. Installed to the home screen
+      // that band includes the status bar.
       const headerPx = () => {
         const h = map.getContainer().closest('.hero')?.querySelector('.hero-top') as HTMLElement | null
-        return h ? h.getBoundingClientRect().height : 120
+        if (!h) return 120
+        return Math.max(0, h.getBoundingClientRect().bottom - map.getContainer().getBoundingClientRect().top)
       }
 
       // Stage towns. Zoomed right out only the ends are named; the rest
