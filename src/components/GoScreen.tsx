@@ -128,7 +128,7 @@ export default function GoScreen({ token }: { token: string }) {
         {state.walk.avatarUrl && <span className="avatar" style={{ backgroundImage: `url("${state.walk.avatarUrl}")` }} aria-hidden="true" />}
         <div className="label">Buen Camino, {walker.name}</div>
       </div>
-      <h1>{state.finished ? 'You made it' : state.started ? `${toGo.toFixed(0)} km to go` : `${state.daysToGo} days to go`}</h1>
+      <h1>{state.finished ? 'You made it' : state.started ? `${toGo.toFixed(0)} km to go` : `${state.daysToGo} ${state.daysToGo === 1 ? 'day' : 'days'} to go`}</h1>
       <p className="sub">{seg ? `${seg.from} → ${seg.to} · ${seg.km} km` : state.walk.name}</p>
       {queued > 0 && <p className="queue">{queued} waiting for signal</p>}
 

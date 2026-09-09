@@ -14,13 +14,21 @@ export async function POST(req: Request, ctx: { params: Promise<{ token: string 
   const auth = await getWalkByToken(token)
   if (!auth) return NextResponse.json({ error: 'no such link' }, { status: 404 })
   const form = await req.formData()
+  // Number(null) is 0, and 0,0 is a real place in the Atlantic — so a photo
+  // posted with no location looked to us like one taken off the coast of
+  // Africa, and the kilometre the walker chose by hand was thrown away.
+  const num = (v: FormDataEntryValue | null) => {
+    if (v == null || v === '') return NaN
+    const n = Number(v)
+    return isFinite(n) ? n : NaN
+  }
   const file = form.get('file')
   const kind = String(form.get('kind') || 'photo')
   const caption = String(form.get('caption') || '').trim().slice(0, 600) || null
-  let lat = Number(form.get('lat')), lng = Number(form.get('lng'))
+  let lat = num(form.get('lat')), lng = num(form.get('lng'))
   let takenAt = String(form.get('takenAt') || '')
   let kmSource = String(form.get('kmSource') || '')
-  const width = Number(form.get('width')) || null, height = Number(form.get('height')) || null
+  const width = num(form.get('width')) || null, height = num(form.get('height')) || null
 
   let mediaPath: string | null = null
   if (file instanceof Blob && file.size > 0) {
@@ -42,7 +50,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ token: string 
   // Where it goes on the line: the photograph's own location, the phone's,
   // or — when a picture carries neither and the walker said so themselves —
   // a kilometre they chose from the list of towns.
-  const said = Number(form.get('km'))
+  const said = num(form.get('km'))
   let km: number | null = null, segmentId: string | null = null
   if (isFinite(lat) && isFinite(lng)) {
     const choices = await getChoices(auth.walk.id)
