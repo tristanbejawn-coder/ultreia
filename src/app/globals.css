@@ -263,6 +263,10 @@ button.chip.fact:hover,button.chip.fact:focus-visible{border-color:var(--arrow);
 .front-door:hover b{color:var(--ink)}
 .share-block.quiet{opacity:.82}
 .big-btn.quiet{background:none;box-shadow:none;border-style:dashed}
+/* Hidden from sight but still a real, clickable input: display:none makes
+   iOS Safari refuse to open the camera roll from a label or a script. */
+.file-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+label.big-btn{cursor:pointer}
 
 /* Saying where a picture was taken, when the picture itself won't say.
    Towns, not coordinates: it is how a walker knows where they were. */

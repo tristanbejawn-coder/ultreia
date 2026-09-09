@@ -134,11 +134,17 @@ export default function GoScreen({ token }: { token: string }) {
 
       {mode === 'home' && (
         <>
-          <input ref={fileRef} type="file" accept="image/*" hidden onChange={e => { const f = e.target.files?.[0]; if (f) pick(f); e.target.value = '' }} />
-          <button className="big-btn primary" onClick={() => fileRef.current?.click()}>
+          {/* A label wrapping the input opens the camera roll with no
+              JavaScript at all — iOS Safari has long been unreliable about a
+              scripted click on a display:none file input, and this is the one
+              button the whole walk depends on. The input is hidden by clip,
+              not by display, for the same reason. */}
+          <input id="pick-photo" ref={fileRef} type="file" accept="image/*" className="file-hidden"
+                 onChange={e => { const f = e.target.files?.[0]; if (f) pick(f); e.target.value = '' }} />
+          <label className="big-btn primary" htmlFor="pick-photo">
             <span className="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#1B2430" strokeWidth="2"><rect x="3" y="7" width="18" height="13" rx="2" /><circle cx="12" cy="13.5" r="3.5" /><path d="M8 7l1.5-3h5L16 7" /></svg></span>
             <span><b>Post a photo</b><span>From the camera roll, with a line if you like</span></span>
-          </button>
+          </label>
           {state.started && !state.finished && (
             <button className="big-btn" onClick={whereWeAre} disabled={pinging}>
               <span className="ic" style={{ background: 'var(--sunk)' }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /><circle cx="12" cy="12" r="8" /></svg></span>
