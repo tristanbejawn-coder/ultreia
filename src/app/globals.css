@@ -280,9 +280,12 @@ label.big-btn{cursor:pointer}
 /* No boxes. A soft disc behind the icon, a whisper of a label beneath, the
    one that matters in gold — the reference is a map app's floating controls,
    not a settings grid. */
-.dock-btn{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;padding:0;background:none;border:0;box-shadow:none;color:var(--ink);cursor:pointer;font:inherit;min-height:0}
+/* .dock-row prefix: the sheet's form-label rule (.sheet label) would
+   otherwise turn the photo, clip and diary labels back into blocks and put
+   the words beside the discs. */
+.dock-row .dock-btn{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;padding:0;margin:0;background:none;border:0;box-shadow:none;color:var(--ink);cursor:pointer;font:inherit;min-height:0;letter-spacing:0;text-transform:none}
 .dock-btn svg{width:46px;height:46px;padding:12px;border-radius:50%;background:var(--ground);box-shadow:inset 0 0 0 1px var(--line);color:var(--ink);transition:transform .12s ease,background .15s}
-.dock-btn b{font-family:var(--mono);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:500;color:var(--ink-3);white-space:nowrap}
+.dock-row .dock-btn b{font-family:var(--mono);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:500;color:var(--ink-3);white-space:nowrap}
 .dock-btn.gold svg{background:var(--arrow);box-shadow:0 6px 16px -6px rgba(224,155,11,.7);color:#1B2430}
 .dock-btn.gold b{color:var(--ink)}
 .dock-btn:active svg{transform:scale(.92)}
