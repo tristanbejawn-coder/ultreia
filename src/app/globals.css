@@ -310,7 +310,10 @@ label.big-btn{cursor:pointer}
 .big-btn .ic{width:44px;height:44px;border-radius:50%;background:var(--arrow);display:grid;place-items:center;flex:none}
 .big-btn .ic svg{width:22px;height:22px}
 .big-btn.primary{background:var(--ink);color:var(--ground);border-color:var(--ink)}
-.big-btn.primary span{color:var(--ink-3)}
+/* The title must stay bright on the dark card: the old rule greyed every
+   span inside, and the heading inherited it — Add a photo read as disabled. */
+.big-btn.primary b{color:var(--ground)}
+.big-btn.primary > span > span{color:rgba(231,233,230,.74)}
 .sheet{background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);padding:16px;margin:0 0 12px;border-radius:2px}
 .sheet h2{font-family:var(--display);font-stretch:62%;font-weight:900;text-transform:uppercase;font-size:22px;line-height:.95;margin:0 0 10px}
 .sheet .pv{width:100%;max-height:44vh;object-fit:contain;background:var(--sunk);margin:0 0 10px}
