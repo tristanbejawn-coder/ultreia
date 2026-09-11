@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { currentOwner } from '@/lib/auth'
 import { dbConfigured, dbSelect } from '@/lib/db'
 import { fmtDatePlus } from '@/lib/fmt'
+import WalkerLinks, { type WalkerLink } from '@/components/WalkerLinks'
 import { ensureWebhook, isAdmin, priceLabel, stripeConfigured, stripeTestMode, type WebhookStatus } from '@/lib/stripe'
 
 export const dynamic = 'force-dynamic'
@@ -85,16 +86,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
               <a className="mono link" href={publicUrl}>{publicUrl.replace('https://', '')}</a>
               <p>Send this to anyone. No sign-up for them; they give a name once.</p>
             </div>
-            {w.walkers.map(wk => {
+            <WalkerLinks walkers={w.walkers.map((wk): WalkerLink => {
               const k = keys.find(x => x.walk_id === w.id && x.walker === wk.key)
-              return (
-                <div className="link-row" key={wk.key}>
-                  <div className="label">{wk.name}’s posting link · private</div>
-                  {k && w.paid ? <a className="mono link" href={`/go/${k.token}`}>{site.replace('https://', '')}/go/{k.token.slice(0, 8)}…</a> : <span className="mono" style={{ fontSize: 12, color: 'var(--ink-3)' }}>{w.paid ? 'no link yet' : 'shown once paid'}</span>}
-                  <p>Only {wk.name}. Open it on their phone and add to home screen.</p>
-                </div>
-              )
-            })}
+              return {
+                key: wk.key, name: wk.name,
+                url: k && w.paid ? `${site}/go/${k.token}` : null,
+                note: w.paid ? 'No link yet.' : 'Shown once the walk is paid for.',
+              }
+            })} />
             <Link className="btn ghost" href={publicUrl}>Open the walk</Link>
           </section>
         )

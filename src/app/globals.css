@@ -268,6 +268,11 @@ button.chip.fact:hover,button.chip.fact:focus-visible{border-color:var(--arrow);
 .file-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
 label.big-btn{cursor:pointer}
 
+/* The owner's own way into a walker's screen, for seeing what they see. */
+.link-row.walker .walker-acts{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 8px}
+.link-row.walker .walker-url{display:block;font-family:var(--mono);font-size:11px;line-height:1.5;word-break:break-all;background:var(--sunk);border-radius:8px;padding:8px 10px;margin:0 0 8px;-webkit-user-select:all;user-select:all}
+.link-row.walker p.dim{color:var(--ink-3)}
+
 /* Saying where a picture was taken, when the picture itself won't say.
    Towns, not coordinates: it is how a walker knows where they were. */
 .place{margin:12px 0 4px;padding:12px;background:var(--ground);border-radius:12px}
