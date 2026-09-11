@@ -43,7 +43,6 @@ export default function WallScreen({ state }: { state: ClientState }) {
           <button className="btn" onClick={send} disabled={busy || !body.trim() || !name.trim()}>Send tonight</button>
         </div>
       </div>
-      {state.demo && <p className="notice warn" style={{ margin: '12px 0 0' }}>Preview: messages can’t be saved until the database is connected.</p>}
       <div className="msgs">
         {msgs.map(m => (
           <div className="msg" key={m.id}>

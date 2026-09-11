@@ -10,7 +10,7 @@ The first walk is Ju & Jit, Porto → Santiago on the Camino Portugués, from
 ## Run
 
     npm install
-    cp .env.example .env.local   # fill in Supabase; leave blank for a no-database preview
+    cp .env.example .env.local   # fill in Supabase; the site needs Supabase to show a walk
     npm run dev
 
 Without a database the site renders the route and countdown with no posts.
@@ -77,13 +77,3 @@ precedence. Keys live in Netlify's environment only; `.githooks/pre-commit`
 (enable with `git config core.hooksPath .githooks`) refuses a commit
 containing one.
 
-## The demo walk
-
-`/w/demo` is a working copy of Ju & Jit's road, three days in, for showing the
-app before anyone has walked it. `scripts/seed-demo.sql` creates it (run in the
-Supabase SQL editor); `scripts/wipe-demo.sql` removes it and everything hanging
-off it in one statement. The real walks are never touched.
-
-Its photographs live in `public/demo`, licensed from Wikimedia Commons and
-credited in each caption. To swap in your own, overwrite the files keeping the
-same names and edit the captions in the seed.

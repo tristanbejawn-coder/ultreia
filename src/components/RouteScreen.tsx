@@ -146,7 +146,6 @@ export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, b
           </Link>
         </div>
 
-        {state.demo && <p className="notice warn">Preview · sample walk. The pictures and messages are placeholders until the database is connected.</p>}
 
         {seg && state.started && !state.finished && (
           <div className="today">

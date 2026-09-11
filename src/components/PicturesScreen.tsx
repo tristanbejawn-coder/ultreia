@@ -34,8 +34,8 @@ export default function PicturesScreen({ state }: { state: ClientState }) {
       ))}
       {unplaced.length > 0 && (
         <section className="group">
-          <h2>Off the route</h2>
-          <p className="sub">Posted without a location</p>
+          <h2>Not on the road</h2>
+          <p className="sub">Airports, trains, days off — pictures with no place on the map</p>
           <div className="mosaic">{unplaced.map(p => <Tile key={p.id} p={p} who={walkers[p.walker] || p.walker} tz={state.walk.timezone} onOpen={() => setOpen(p.id)} />)}</div>
         </section>
       )}

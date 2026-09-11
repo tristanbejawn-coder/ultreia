@@ -53,6 +53,9 @@ export default function GoScreen({ token, map }: { token: string; map: MapCfg })
   // photo draft
   const [draft, setDraft] = useState<{ url: string; blob: Blob; width: number; height: number; lat: number | null; lng: number | null; km: number | null; kmSource: string; takenAt: string } | null>(null)
   const [placing, setPlacing] = useState(false)
+  // A picture with no place can still be posted — an airport, a train, a
+  // day off — once the walker has said so. It goes in the album, not on the map.
+  const [noPlace, setNoPlace] = useState(false)
   const [caption, setCaption] = useState('')
 
   const load = useCallback(async () => {
@@ -80,7 +83,7 @@ export default function GoScreen({ token, map }: { token: string; map: MapCfg })
     let lat = ex.lat, lng = ex.lng, kmSource = 'exif'
     if (lat == null || lng == null) { const h = await here(); if (h) { lat = h.lat; lng = h.lng; kmSource = 'device' } else kmSource = '' }
     setDraft({ url: URL.createObjectURL(blob), blob, width, height, lat, lng, km: null, kmSource, takenAt: (ex.takenAt || new Date()).toISOString() })
-    setCaption(''); setPlacing(false); setMode('photo')
+    setCaption(''); setPlacing(false); setNoPlace(false); setMode('photo')
   }
 
   async function pickClip(f: File, kind: 'clip' | 'diary') {
@@ -214,7 +217,7 @@ export default function GoScreen({ token, map }: { token: string; map: MapCfg })
         {state.started && !state.finished && (
           <button className="dock-btn" onClick={whereWeAre} disabled={pinging}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="2.6" /><circle cx="12" cy="12" r="7.4" /><path d="M12 2.2v2.4M12 19.4v2.4M2.2 12h2.4M19.4 12h2.4" /></svg>
-            <b>{pinging ? 'Finding…' : 'We’re at'}</b>
+            <b>{pinging ? 'Finding…' : 'Where'}</b>
           </button>
         )}
         {seg && state.started && !state.finished && (
@@ -270,19 +273,25 @@ export default function GoScreen({ token, map }: { token: string; map: MapCfg })
               {draft.kmSource === 'exif' ? 'Placed from the photo’s own location'
                 : draft.kmSource === 'device' ? 'Placed where you are now'
                 : draft.kmSource === 'manual' ? `Placed by you · km ${draft.km?.toFixed(0)}`
+                : noPlace ? 'Not tagged to a place · goes in the album, not on the map'
                 : 'This picture carries no location'}
             </div>
             {!placing ? (
-              <button type="button" className="btn small ghost" onClick={() => setPlacing(true)}>
-                {draft.kmSource && draft.kmSource !== 'manual' ? 'Place it myself' : 'Say where it was'}
-              </button>
+              <div className="place-acts">
+                <button type="button" className="btn small ghost" onClick={() => setPlacing(true)}>
+                  {draft.kmSource && draft.kmSource !== 'manual' ? 'Place it myself' : 'Say where it was'}
+                </button>
+                {!draft.kmSource && !noPlace && (
+                  <button type="button" className="btn small ghost" onClick={() => setNoPlace(true)}>Post without a place</button>
+                )}
+              </div>
             ) : (
               <>
                 <p className="hint">Nearest town on the road. It goes on the line there.</p>
                 <div className="towns">
                   {state.route.segments.map(sg => (
                     <button key={sg.id} type="button" className={`town${draft.kmSource === 'manual' && draft.km === sg.km ? ' on' : ''}`}
-                      onClick={() => { setDraft(d => d && ({ ...d, km: sg.km, kmSource: 'manual', lat: null, lng: null })); setPlacing(false) }}>
+                      onClick={() => { setDraft(d => d && ({ ...d, km: sg.km, kmSource: 'manual', lat: null, lng: null })); setNoPlace(false); setPlacing(false) }}>
                       {sg.from}<span>km {sg.km.toFixed(0)}</span>
                     </button>
                   ))}
@@ -290,7 +299,7 @@ export default function GoScreen({ token, map }: { token: string; map: MapCfg })
                     const last = state.route.segments[state.route.segments.length - 1]
                     return last ? (
                       <button type="button" className={`town${draft.kmSource === 'manual' && draft.km === last.endKm ? ' on' : ''}`}
-                        onClick={() => { setDraft(d => d && ({ ...d, km: last.endKm, kmSource: 'manual', lat: null, lng: null })); setPlacing(false) }}>
+                        onClick={() => { setDraft(d => d && ({ ...d, km: last.endKm, kmSource: 'manual', lat: null, lng: null })); setNoPlace(false); setPlacing(false) }}>
                         {last.to}<span>km {last.endKm.toFixed(0)}</span>
                       </button>
                     ) : null
@@ -303,7 +312,7 @@ export default function GoScreen({ token, map }: { token: string; map: MapCfg })
 
           <div className="row">
             <button className="btn ghost" onClick={() => { setDraft(null); setPlacing(false); setMode('home') }}>Cancel</button>
-            <button className="btn" onClick={post}>Post</button>
+            <button className="btn" onClick={post} disabled={!draft.kmSource && !noPlace}>Post</button>
           </div>
         </div>
       )}
