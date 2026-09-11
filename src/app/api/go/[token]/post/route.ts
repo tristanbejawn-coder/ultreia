@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { dbInsert, storagePut } from '@/lib/db'
+import { dbInsert, dbInsertNew, storagePut } from '@/lib/db'
 import { readExif } from '@/lib/exif'
 import { buildRoute, snapToRoute } from '@/lib/route'
 import { getChoices, getWalkByToken } from '@/lib/walk'
@@ -22,6 +22,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ token: string 
     const n = Number(v)
     return isFinite(n) ? n : NaN
   }
+  // The phone names its own post, so a retry after a lost reply cannot put
+  // the same photograph up twice.
+  const postId = String(form.get('postId') || '')
+  const idempotent = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(postId)
   const file = form.get('file')
   const kind = String(form.get('kind') || 'photo')
   const caption = String(form.get('caption') || '').trim().slice(0, 600) || null
@@ -43,9 +47,16 @@ export async function POST(req: Request, ctx: { params: Promise<{ token: string 
     const id = crypto.randomUUID()
     mediaPath = `${auth.walk.id}/${id}.jpg`
     await storagePut(mediaPath, bytes, file.type || 'image/jpeg')
-  } else if (kind === 'photo') {
+  } else if (form.get('mediaPath')) {
+    // A clip the phone uploaded straight to storage, too big for this route.
+    mediaPath = String(form.get('mediaPath'))
+    if (!mediaPath.startsWith(`${auth.walk.id}/`)) return NextResponse.json({ error: 'not your walk' }, { status: 403 })
+  } else if (kind === 'photo' || kind === 'clip' || kind === 'diary') {
     return NextResponse.json({ error: 'no file' }, { status: 400 })
   }
+  const posterRaw = String(form.get('posterPath') || '')
+  const posterPath = posterRaw.startsWith(`${auth.walk.id}/`) ? posterRaw : null
+  const durationS = Math.round(num(form.get('durationS'))) || null
 
   // Where it goes on the line: the photograph's own location, the phone's,
   // or — when a picture carries neither and the walker said so themselves —
@@ -69,12 +80,19 @@ export async function POST(req: Request, ctx: { params: Promise<{ token: string 
     }
   }
 
-  const [row] = await dbInsert('ultreia_posts', {
+  const fields = {
     walk_id: auth.walk.id, walker: auth.walker.key, kind, caption,
     taken_at: takenAt || new Date().toISOString(),
     lat: isFinite(lat) ? lat : null, lng: isFinite(lng) ? lng : null,
     km, km_source: km != null ? kmSource || 'device' : null, segment_id: segmentId,
-    media_path: mediaPath, width, height,
-  }, true)
+    media_path: mediaPath, poster_path: posterPath, duration_s: durationS, width, height,
+  }
+
+  if (idempotent) {
+    const fresh = await dbInsertNew('ultreia_posts', { id: postId, ...fields })
+    if (!fresh) return NextResponse.json({ ok: true, id: postId, already: true }, { status: 409 })
+    return NextResponse.json({ ok: true, id: postId, km, segmentId })
+  }
+  const [row] = await dbInsert<{ id: string }>('ultreia_posts', fields, true)
   return NextResponse.json({ ok: true, id: row?.id, km, segmentId })
 }

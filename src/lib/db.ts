@@ -33,6 +33,22 @@ export async function dbInsert<T = Json>(table: string, rows: Json | Json[], ret
   return returning ? res.json() : []
 }
 
+// Insert, unless a row with that primary key is already there. Used to make
+// posting a photograph idempotent: the phone names the row, so an upload that
+// succeeded but never got its reply through can be retried safely.
+export async function dbInsertNew(table: string, row: Json): Promise<boolean> {
+  if (!dbConfigured()) throw new Error('database not configured')
+  const res = await fetch(`${URL_BASE}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: headers({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
+    body: JSON.stringify(row),
+  })
+  if (res.ok) return true
+  const text = await res.text()
+  if (res.status === 409 || text.includes('23505')) return false   // already there
+  throw new Error(`db insert ${table}: ${res.status} ${text}`)
+}
+
 export async function dbUpsert(table: string, rows: Json | Json[], onConflict: string): Promise<void> {
   if (!dbConfigured()) throw new Error('database not configured')
   const res = await fetch(`${URL_BASE}/rest/v1/${table}?on_conflict=${onConflict}`, {
@@ -69,6 +85,21 @@ export async function storagePut(path: string, bytes: ArrayBuffer | Uint8Array, 
   })
   if (!res.ok) throw new Error(`storage put ${path}: ${res.status} ${await res.text()}`)
   return publicUrl(path) as string
+}
+
+// A one-off URL the phone can PUT a file to directly. Video cannot go
+// through our own API: the platform caps a request body at a few megabytes
+// and thirty seconds of phone video is many times that. The service key
+// stays here; the phone gets a signed URL good for one upload.
+export async function signedUploadUrl(path: string): Promise<{ path: string; url: string }> {
+  if (!dbConfigured()) throw new Error('database not configured')
+  const res = await fetch(`${URL_BASE}/storage/v1/object/upload/sign/${BUCKET}/${path}`, {
+    method: 'POST', headers: headers({ 'Content-Type': 'application/json' }), body: '{}',
+  })
+  if (!res.ok) throw new Error(`sign upload ${path}: ${res.status} ${await res.text()}`)
+  const json = await res.json() as { url?: string }
+  if (!json.url) throw new Error('no signed url came back')
+  return { path, url: `${URL_BASE}/storage/v1${json.url}` }
 }
 
 export function publicUrl(path: string | null | undefined): string | null {

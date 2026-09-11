@@ -29,12 +29,16 @@ export const enqueue = (p: QueuedPost) => tx('readwrite', s => s.put(p))
 export const remove = (id: string) => tx('readwrite', s => s.delete(id))
 export const all = () => tx<QueuedPost[]>('readonly', s => s.getAll())
 
-export async function drain(onChange?: (left: number) => void): Promise<void> {
+export async function drain(onChange?: (left: number) => void, onFailed?: (p: QueuedPost, why: string) => void): Promise<void> {
   const items = (await all()).sort((a, b) => a.createdAt - b.createdAt)
   onChange?.(items.length)
   for (const it of items) {
     const fd = new FormData()
     if (it.blob) fd.append('file', it.blob, 'photo.jpg')
+    // The queue's own id travels with the post: on bad signal an upload can
+    // succeed and the reply never arrive, and without this the next drain
+    // would put the same photograph on the map twice.
+    fd.append('postId', it.id)
     fd.append('kind', it.kind); fd.append('caption', it.caption); fd.append('takenAt', it.takenAt)
     if (it.lat != null && it.lng != null) { fd.append('lat', String(it.lat)); fd.append('lng', String(it.lng)) }
     fd.append('kmSource', it.kmSource)
@@ -42,8 +46,16 @@ export async function drain(onChange?: (left: number) => void): Promise<void> {
     if (it.width) fd.append('width', String(it.width)); if (it.height) fd.append('height', String(it.height))
     try {
       const res = await fetch(`/api/go/${it.token}/post`, { method: 'POST', body: fd })
-      if (res.ok || res.status === 400 || res.status === 413) await remove(it.id)   // gone, or never going to work
-      else break
+      if (res.ok || res.status === 409) { await remove(it.id); continue }   // done, or already up there
+      if (res.status === 400 || res.status === 413) {
+        // Never going to work. Drop it, but say so rather than vanishing.
+        await remove(it.id)
+        onFailed?.(it, (await res.json().catch(() => ({}))).error || 'The server refused it.')
+        continue
+      }
+      it.tries += 1
+      await tx('readwrite', s => s.put(it))
+      break
     } catch { break }
     onChange?.((await all()).length)
   }

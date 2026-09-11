@@ -7,6 +7,7 @@ import Figures from './Figures'
 import RouteScreen from './RouteScreen'
 import { readExif } from '@/lib/exif'
 import { enqueue, drain, all } from '@/lib/queue'
+import { CLIP_MAX_BYTES, CLIP_SECONDS, readClip, uploadDirect } from '@/lib/clip'
 import type { ClientState } from '@/lib/walk'
 import { fmtDate } from '@/lib/fmt'
 
@@ -35,9 +36,19 @@ type MapCfg = { tileUrl: string; attribution: string; terrainUrl?: string | null
 export default function GoScreen({ token, map }: { token: string; map: MapCfg }) {
   const [me, setMe] = useState<Me | null>(null)
   const [err, setErr] = useState<string | null>(null)
-  const [mode, setMode] = useState<'home' | 'photo' | 'checkin' | 'fork' | 'post'>('home')
+  const [mode, setMode] = useState<'home' | 'photo' | 'clip' | 'diary' | 'checkin' | 'fork' | 'post'>('home')
   const [queued, setQueued] = useState(0)
+  // A post the server refuses outright used to disappear without a word.
+  const [refused, setRefused] = useState<string | null>(null)
+  const sink = (left: number) => setQueued(left)
+  const refuse = (_p: unknown, why: string) => setRefused(why)
   const fileRef = useRef<HTMLInputElement>(null)
+  const clipRef = useRef<HTMLInputElement>(null)
+  const diaryRef = useRef<HTMLInputElement>(null)
+  // A clip is uploaded as it is chosen: it is far too big to sit in the
+  // queue, and far too big for our own API, so it goes straight to storage.
+  const [clip, setClip] = useState<{ kind: 'clip' | 'diary'; file: File; durationS: number; width: number; height: number; poster: Blob | null; url: string } | null>(null)
+  const [sending, setSending] = useState<string | null>(null)
 
   // photo draft
   const [draft, setDraft] = useState<{ url: string; blob: Blob; width: number; height: number; lat: number | null; lng: number | null; km: number | null; kmSource: string; takenAt: string } | null>(null)
@@ -54,7 +65,7 @@ export default function GoScreen({ token, map }: { token: string; map: MapCfg })
 
   useEffect(() => {
     load()
-    const tick = () => drain(setQueued).then(load)
+    const tick = () => drain(sink, refuse).then(load)
     all().then(q => setQueued(q.length))
     tick()
     window.addEventListener('online', tick)
@@ -72,11 +83,54 @@ export default function GoScreen({ token, map }: { token: string; map: MapCfg })
     setCaption(''); setPlacing(false); setMode('photo')
   }
 
+  async function pickClip(f: File, kind: 'clip' | 'diary') {
+    setRefused(null)
+    if (f.size > CLIP_MAX_BYTES) { setRefused('That video is enormous. Record a shorter one.'); return }
+    try {
+      const read = await readClip(f)
+      if (read.durationS > CLIP_SECONDS + 1) {
+        setRefused(`${read.durationS} seconds is too long — ${CLIP_SECONDS} is the most. Trim it in Photos and try again.`)
+        return
+      }
+      setClip({ kind, file: f, ...read, url: URL.createObjectURL(f) })
+      setCaption(''); setMode(kind)
+    } catch (e) {
+      setRefused((e as Error).message)
+    }
+  }
+
+  // Clips need signal now; there is no sensible way to hold one on the phone.
+  async function postClip() {
+    if (!clip) return
+    setSending('Sending…')
+    try {
+      const mediaPath = await uploadDirect(token, clip.file, clip.file.type || 'video/mp4')
+      let posterPath: string | null = null
+      if (clip.poster) { try { posterPath = await uploadDirect(token, clip.poster, 'image/jpeg') } catch {} }
+      const h = await here()
+      const fd = new FormData()
+      fd.append('postId', crypto.randomUUID())
+      fd.append('kind', clip.kind)
+      fd.append('caption', caption)
+      fd.append('mediaPath', mediaPath)
+      if (posterPath) fd.append('posterPath', posterPath)
+      fd.append('durationS', String(clip.durationS))
+      fd.append('width', String(clip.width)); fd.append('height', String(clip.height))
+      if (h) { fd.append('lat', String(h.lat)); fd.append('lng', String(h.lng)); fd.append('kmSource', 'device') }
+      const res = await fetch(`/api/go/${token}/post`, { method: 'POST', body: fd })
+      if (!res.ok && res.status !== 409) throw new Error('The last step didn’t go through. Try again when there’s more signal.')
+      setClip(null); setSending(null); setMode('home'); load()
+    } catch (e) {
+      setSending(null)
+      setRefused((e as Error).message)
+    }
+  }
+
   async function post() {
     if (!draft) return
     await enqueue({ id: crypto.randomUUID(), token, kind: 'photo', blob: draft.blob, caption, takenAt: draft.takenAt, lat: draft.lat, lng: draft.lng, km: draft.km, kmSource: draft.kmSource, width: draft.width, height: draft.height, createdAt: Date.now(), tries: 0 })
     setDraft(null); setPlacing(false); setMode('home')
-    drain(setQueued).then(load)
+    drain(sink, refuse).then(load)
   }
 
   const [pinging, setPinging] = useState(false)
@@ -124,56 +178,68 @@ export default function GoScreen({ token, map }: { token: string; map: MapCfg })
   const forkNear = nextFork && (() => { const s = state.route.segments.find(x => x.from === nextFork.atName); return s ? s.km - state.position.km <= 60 : false })()
   const tonight = bundle.filter(m => !m.delivered_at)
   const delivered = bundle.filter(m => m.delivered_at)
-
-  // Their own buttons, which ride at the top of the sheet under the map.
+  // Their own buttons: one row of icons under the map, because the map is the
+  // page and a stack of cards was burying it. Every action is here.
   const walkerActions = (
-    <div className="walker-bar">
-      <div className="walker-who">
+    <div className="dock">
+      <div className="dock-who">
         {state.walk.avatarUrl && <span className="avatar" style={{ backgroundImage: `url("${state.walk.avatarUrl}")` }} aria-hidden="true" />}
         <span className="label">Buen Camino, {walker.name}</span>
-        {queued > 0 && <span className="queue-pill">{queued} waiting for signal</span>}
+        {queued > 0 && <span className="queue-pill">{queued} waiting</span>}
       </div>
 
-      {/* A label wrapping the input opens the camera roll with no JavaScript
-          at all — iOS Safari has never been dependable about a scripted click
-          on a hidden file input, and this is the button the walk depends on. */}
+      {/* Labels wrapping the inputs: a scripted click on a hidden file input
+          has never been dependable on iOS, and these are the buttons the walk
+          depends on. */}
       <input id="pick-photo" ref={fileRef} type="file" accept="image/*" className="file-hidden"
              onChange={e => { const f = e.target.files?.[0]; if (f) pick(f); e.target.value = '' }} />
-      <label className="big-btn primary" htmlFor="pick-photo">
-        <span className="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#1B2430" strokeWidth="2"><rect x="3" y="7" width="18" height="13" rx="2" /><circle cx="12" cy="13.5" r="3.5" /><path d="M8 7l1.5-3h5L16 7" /></svg></span>
-        <span><b>Add a photo</b><span>From the camera roll, with a line if you like</span></span>
-      </label>
+      <input id="pick-clip" ref={clipRef} type="file" accept="video/*" className="file-hidden"
+             onChange={e => { const f = e.target.files?.[0]; if (f) pickClip(f, 'clip'); e.target.value = '' }} />
+      <input id="pick-diary" ref={diaryRef} type="file" accept="video/*" className="file-hidden"
+             onChange={e => { const f = e.target.files?.[0]; if (f) pickClip(f, 'diary'); e.target.value = '' }} />
 
-      <div className="walker-row">
+      <div className="dock-row">
+        <label className="dock-btn gold" htmlFor="pick-photo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="7" width="18" height="13" rx="2.5" /><circle cx="12" cy="13.5" r="3.6" /><path d="M8.5 7l1.3-2.6h4.4L15.5 7" /></svg>
+          <b>Photo</b>
+        </label>
+        <label className="dock-btn" htmlFor="pick-clip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="6" width="13" height="12" rx="2.5" /><path d="M16 10.5l5-3v9l-5-3" /></svg>
+          <b>Clip</b>
+        </label>
+        <label className="dock-btn" htmlFor="pick-diary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15.5a3.5 3.5 0 0 0 3.5-3.5V7a3.5 3.5 0 0 0-7 0v5a3.5 3.5 0 0 0 3.5 3.5Z" /><path d="M6 12a6 6 0 0 0 12 0M12 18.5V21" /></svg>
+          <b>Diary</b>
+        </label>
         {state.started && !state.finished && (
-          <button className="walker-btn" onClick={whereWeAre} disabled={pinging}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /><circle cx="12" cy="12" r="8" /></svg>
-            <b>{pinging ? 'Finding you…' : 'Where we are'}</b>
+          <button className="dock-btn" onClick={whereWeAre} disabled={pinging}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="2.6" /><circle cx="12" cy="12" r="7.4" /><path d="M12 2.2v2.4M12 19.4v2.4M2.2 12h2.4M19.4 12h2.4" /></svg>
+            <b>{pinging ? 'Finding…' : 'We’re at'}</b>
           </button>
         )}
         {seg && state.started && !state.finished && (
-          <button className="walker-btn" onClick={() => setMode('checkin')}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 13l4 4L19 7" /></svg>
-            <b>We’re here</b>
+          <button className="dock-btn" onClick={() => setMode('checkin')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.8l4.2 4.2L19 7.2" /></svg>
+            <b>Arrived</b>
           </button>
         )}
-        <button className="walker-btn" onClick={() => setMode('post')}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M3 7.5l9 6 9-6" /></svg>
-          <b>{tonight.length ? `${tonight.length} tonight` : 'The post'}</b>
+        <button className="dock-btn" onClick={() => setMode('post')}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="6" width="18" height="12" rx="2.5" /><path d="M3.6 7.4l8.4 5.6 8.4-5.6" /></svg>
+          <b>Post</b>
+          {tonight.length > 0 && <i className="dot-badge">{tonight.length}</i>}
         </button>
       </div>
 
-      {nextFork && (
-        <button className={`big-btn${forkNear ? ' near' : ''}`} onClick={() => setMode('fork')}>
-          <span className="ic" style={{ background: 'var(--sunk)' }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20V10M12 10L6 4M12 10l6-6" /></svg></span>
-          <span><b>{nextFork.question}</b><span>{forkNear ? 'Coming up — choose when you know' : `Decide at ${nextFork.atName}`}</span></span>
+      {refused && <p className="notice warn dock-note" onClick={() => setRefused(null)}>{refused}</p>}
+
+      {nextFork && forkNear && (
+        <button className="dock-fork" onClick={() => setMode('fork')}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M12 20V10M12 10L6 4M12 10l6-6" /></svg>
+          <span><b>{nextFork.question}</b><span>Choose when you know</span></span>
         </button>
       )}
 
-      <button className="big-btn quiet" onClick={handOver}>
-        <span className="ic" style={{ background: 'var(--sunk)' }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 3v12M8 7l4-4 4 4M5 14v5h14v-5" /></svg></span>
-        <span><b>{handed ? 'Sent' : 'Met another pilgrim?'}</b><span>Send them Ultreia — their own walk, their own map</span></span>
-      </button>
+      <button className="dock-hand" onClick={handOver}>{handed ? 'Sent' : 'Met another pilgrim? Send them Ultreia'}</button>
     </div>
   )
 
@@ -238,6 +304,21 @@ export default function GoScreen({ token, map }: { token: string; map: MapCfg })
           <div className="row">
             <button className="btn ghost" onClick={() => { setDraft(null); setPlacing(false); setMode('home') }}>Cancel</button>
             <button className="btn" onClick={post}>Post</button>
+          </div>
+        </div>
+      )}
+
+      {(mode === 'clip' || mode === 'diary') && clip && (
+        <div className="sheet">
+          <h2>{clip.kind === 'diary' ? 'A diary entry' : 'A clip of the road'}</h2>
+          <video className="pv" src={clip.url} controls playsInline muted />
+          <p className="label">{clip.durationS} seconds · goes up now, so it needs a bar of signal</p>
+          <label>A line for it</label>
+          <textarea value={caption} onChange={e => setCaption(e.target.value)} maxLength={600}
+                    placeholder={clip.kind === 'diary' ? 'Day three, and the feet have opinions…' : 'The sea all morning…'} rows={2} />
+          <div className="row">
+            <button className="btn ghost" onClick={() => { setClip(null); setMode('home') }} disabled={!!sending}>Cancel</button>
+            <button className="btn" onClick={postClip} disabled={!!sending}>{sending || 'Post'}</button>
           </div>
         </div>
       )}
