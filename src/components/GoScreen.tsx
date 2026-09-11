@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Figures from './Figures'
+import RouteScreen from './RouteScreen'
 import { readExif } from '@/lib/exif'
 import { enqueue, drain, all } from '@/lib/queue'
 import type { ClientState } from '@/lib/walk'
@@ -29,7 +30,9 @@ function here(): Promise<{ lat: number; lng: number } | null> {
   })
 }
 
-export default function GoScreen({ token }: { token: string }) {
+type MapCfg = { tileUrl: string; attribution: string; terrainUrl?: string | null }
+
+export default function GoScreen({ token, map }: { token: string; map: MapCfg }) {
   const [me, setMe] = useState<Me | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [mode, setMode] = useState<'home' | 'photo' | 'checkin' | 'fork' | 'post'>('home')
@@ -122,66 +125,70 @@ export default function GoScreen({ token }: { token: string }) {
   const tonight = bundle.filter(m => !m.delivered_at)
   const delivered = bundle.filter(m => m.delivered_at)
 
-  return (
-    <div className="go">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+  // Their own buttons, which ride at the top of the sheet under the map.
+  const walkerActions = (
+    <div className="walker-bar">
+      <div className="walker-who">
         {state.walk.avatarUrl && <span className="avatar" style={{ backgroundImage: `url("${state.walk.avatarUrl}")` }} aria-hidden="true" />}
-        <div className="label">Buen Camino, {walker.name}</div>
+        <span className="label">Buen Camino, {walker.name}</span>
+        {queued > 0 && <span className="queue-pill">{queued} waiting for signal</span>}
       </div>
-      <h1>{state.finished ? 'You made it' : state.started ? `${toGo.toFixed(0)} km to go` : `${state.daysToGo} ${state.daysToGo === 1 ? 'day' : 'days'} to go`}</h1>
-      <p className="sub">{seg ? `${seg.from} → ${seg.to} · ${seg.km} km` : state.walk.name}</p>
-      {queued > 0 && <p className="queue">{queued} waiting for signal</p>}
 
-      {mode === 'home' && (
-        <>
-          {/* A label wrapping the input opens the camera roll with no
-              JavaScript at all — iOS Safari has long been unreliable about a
-              scripted click on a display:none file input, and this is the one
-              button the whole walk depends on. The input is hidden by clip,
-              not by display, for the same reason. */}
-          <input id="pick-photo" ref={fileRef} type="file" accept="image/*" className="file-hidden"
-                 onChange={e => { const f = e.target.files?.[0]; if (f) pick(f); e.target.value = '' }} />
-          <label className="big-btn primary" htmlFor="pick-photo">
-            <span className="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#1B2430" strokeWidth="2"><rect x="3" y="7" width="18" height="13" rx="2" /><circle cx="12" cy="13.5" r="3.5" /><path d="M8 7l1.5-3h5L16 7" /></svg></span>
-            <span><b>Post a photo</b><span>From the camera roll, with a line if you like</span></span>
-          </label>
-          {state.started && !state.finished && (
-            <button className="big-btn" onClick={whereWeAre} disabled={pinging}>
-              <span className="ic" style={{ background: 'var(--sunk)' }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /><circle cx="12" cy="12" r="8" /></svg></span>
-              <span><b>{pinging ? 'Finding you…' : 'Where we are'}</b><span>One tap moves you on the family’s map</span></span>
-            </button>
-          )}
-          {seg && state.started && !state.finished && (
-            <button className="big-btn" onClick={() => setMode('checkin')}>
-              {state.walk.avatarUrl ? <span className="avatar" style={{ backgroundImage: `url("${state.walk.avatarUrl}")` }} aria-hidden="true" /> : <span className="ic"><Figures size={30} /></span>}
-              <span><b>We’re here</b><span>Mark today’s stage done{seg ? ` · ${seg.to}` : ''}</span></span>
-            </button>
-          )}
-          {nextFork && (
-            <button className="big-btn" onClick={() => setMode('fork')} style={forkNear ? { borderColor: 'var(--arrow)' } : undefined}>
-              <span className="ic" style={{ background: 'var(--sunk)' }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20V10M12 10L6 4M12 10l6-6" /></svg></span>
-              <span><b>{nextFork.question}</b><span>{forkNear ? 'Coming up — choose when you know' : `Decide at ${nextFork.atName}`}</span></span>
-            </button>
-          )}
-          <button className="big-btn" onClick={() => setMode('post')}>
-            <span className="ic" style={{ background: 'var(--sunk)' }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M3 7.5l9 6 9-6" /></svg></span>
-            <span><b>{tonight.length ? `${tonight.length} tonight` : 'The post'}</b><span>{tonight.length ? `Waiting for ${String(state.walk.digestHour).padStart(2, '0')}:00` : delivered.length ? `${delivered.length} read` : 'Nothing yet — they’ll write'}</span></span>
+      {/* A label wrapping the input opens the camera roll with no JavaScript
+          at all — iOS Safari has never been dependable about a scripted click
+          on a hidden file input, and this is the button the walk depends on. */}
+      <input id="pick-photo" ref={fileRef} type="file" accept="image/*" className="file-hidden"
+             onChange={e => { const f = e.target.files?.[0]; if (f) pick(f); e.target.value = '' }} />
+      <label className="big-btn primary" htmlFor="pick-photo">
+        <span className="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#1B2430" strokeWidth="2"><rect x="3" y="7" width="18" height="13" rx="2" /><circle cx="12" cy="13.5" r="3.5" /><path d="M8 7l1.5-3h5L16 7" /></svg></span>
+        <span><b>Add a photo</b><span>From the camera roll, with a line if you like</span></span>
+      </label>
+
+      <div className="walker-row">
+        {state.started && !state.finished && (
+          <button className="walker-btn" onClick={whereWeAre} disabled={pinging}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /><circle cx="12" cy="12" r="8" /></svg>
+            <b>{pinging ? 'Finding you…' : 'Where we are'}</b>
           </button>
-        </>
+        )}
+        {seg && state.started && !state.finished && (
+          <button className="walker-btn" onClick={() => setMode('checkin')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 13l4 4L19 7" /></svg>
+            <b>We’re here</b>
+          </button>
+        )}
+        <button className="walker-btn" onClick={() => setMode('post')}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M3 7.5l9 6 9-6" /></svg>
+          <b>{tonight.length ? `${tonight.length} tonight` : 'The post'}</b>
+        </button>
+      </div>
+
+      {nextFork && (
+        <button className={`big-btn${forkNear ? ' near' : ''}`} onClick={() => setMode('fork')}>
+          <span className="ic" style={{ background: 'var(--sunk)' }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20V10M12 10L6 4M12 10l6-6" /></svg></span>
+          <span><b>{nextFork.question}</b><span>{forkNear ? 'Coming up — choose when you know' : `Decide at ${nextFork.atName}`}</span></span>
+        </button>
       )}
 
-      {mode === 'home' && (
-        <>
-          <p className="label" style={{ marginTop: 18 }}><a href={state.walk.slug === 'ju-and-jit' ? '/' : `/w/${state.walk.slug}`} style={{ color: 'var(--azul)' }}>See what the family sees →</a></p>
-          {/* For the couple you fall in with at an albergue: one tap sends
-              them the front door, and they end up with their own map. */}
-          <button className="big-btn quiet" onClick={handOver}>
-            <span className="ic" style={{ background: 'var(--sunk)' }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 3v12M8 7l4-4 4 4M5 14v5h14v-5" /></svg></span>
-            <span><b>{handed ? 'Sent' : 'Met another pilgrim?'}</b><span>Send them Ultreia — they get their own walk and their own map</span></span>
-          </button>
-        </>
-      )}
+      <button className="big-btn quiet" onClick={handOver}>
+        <span className="ic" style={{ background: 'var(--sunk)' }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 3v12M8 7l4-4 4 4M5 14v5h14v-5" /></svg></span>
+        <span><b>{handed ? 'Sent' : 'Met another pilgrim?'}</b><span>Send them Ultreia — their own walk, their own map</span></span>
+      </button>
+    </div>
+  )
 
+  const publicUrl = state.walk.slug === 'ju-and-jit' ? '/' : `/w/${state.walk.slug}`
+
+  return (
+    <>
+      {/* Their home page is the map the family sees, with their own buttons
+          on it. Everything else opens over the top. */}
+      <RouteScreen state={state} tileUrl={map.tileUrl} attribution={map.attribution} terrainUrl={map.terrainUrl}
+                   base="" publicUrl={publicUrl} actions={walkerActions} />
+
+      {mode !== 'home' && (
+        <div className="go-veil" onClick={() => { setMode('home'); setDraft(null); setPlacing(false) }}>
+          <div className="go-panel" onClick={e => e.stopPropagation()}>
       {mode === 'photo' && draft && (
         <div className="sheet">
           <h2>Post a photo</h2>
@@ -270,6 +277,9 @@ export default function GoScreen({ token }: { token: string }) {
           <div className="row"><button className="btn ghost" onClick={() => setMode('home')}>Back</button></div>
         </div>
       )}
-    </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }

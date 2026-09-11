@@ -12,13 +12,19 @@ import type { ClientState } from '@/lib/walk'
 import { placeLore } from '@/lib/lore'
 import { fmtDatePlus, fmtTime, shortName } from '@/lib/fmt'
 
-type Props = { state: ClientState; tileUrl: string; attribution: string; terrainUrl?: string | null; base: string; ownerLinks?: OwnerLinks | null; publicUrl: string }
+type Props = {
+  state: ClientState; tileUrl: string; attribution: string; terrainUrl?: string | null
+  base: string; ownerLinks?: OwnerLinks | null; publicUrl: string
+  // A walker's own buttons, sitting at the top of the sheet on their private
+  // link. The family never passes this, so their page is unchanged.
+  actions?: React.ReactNode
+}
 
 function plannedDate(startsOn: string | null, index: number): string | null {
   return startsOn ? fmtDatePlus(startsOn, index) : null
 }
 
-export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, base, ownerLinks, publicUrl }: Props) {
+export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, base, ownerLinks, publicUrl, actions }: Props) {
   const [open, setOpen] = useState<string | null>(null)
   const [share, setShare] = useState<'closed' | 'open' | 'welcome'>('closed')
   // Someone arriving from a friend's link has no idea what this is. Say so
@@ -107,6 +113,7 @@ export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, b
 
       <section className="sheet">
         <div className="handle" aria-hidden="true" />
+        {actions}
 
         <div className="status">
           <svg className="ring" viewBox="0 0 52 52" aria-hidden="true">
