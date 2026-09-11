@@ -38,9 +38,11 @@ export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, b
     if (typeof window === 'undefined') return
     // The paid-owner welcome owns the first moment; don't stack two sheets.
     const owner = new URLSearchParams(window.location.search).has('welcome')
-    if (!owner && !hasSeenWelcome(state.walk.slug)) setPending(true)
+    // And a walker needs no introduction to their own walk: actions means
+    // this is their screen, not a stranger's first visit.
+    if (!owner && !actions && !hasSeenWelcome(state.walk.slug)) setPending(true)
     setDecided(true)
-  }, [state.walk.slug])
+  }, [state.walk.slug, actions])
   // The flyover is the best thing on the page and it was playing out behind
   // the welcome sheet, unwatched. Hold it until there's nothing over the map.
   const holdFlight = !decided || pending || intro
