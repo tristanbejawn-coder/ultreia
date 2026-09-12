@@ -10,6 +10,7 @@ import ShareSheet, { type OwnerLinks } from './ShareSheet'
 import WelcomeSheet, { hasSeenWelcome, markWelcomeSeen } from './WelcomeSheet'
 import type { ClientState } from '@/lib/walk'
 import { placeLore } from '@/lib/lore'
+import { Bell } from './Pwa'
 import { fmtDatePlus, fmtTime, shortName } from '@/lib/fmt'
 
 type Props = {
@@ -18,13 +19,16 @@ type Props = {
   // A walker's own buttons, sitting at the top of the sheet on their private
   // link. The family never passes this, so their page is unchanged.
   actions?: React.ReactNode
+  // The public key for push; the family page offers to tell people when a
+  // stage is done, the walkers' own screen offers something else.
+  vapid?: string | null
 }
 
 function plannedDate(startsOn: string | null, index: number): string | null {
   return startsOn ? fmtDatePlus(startsOn, index) : null
 }
 
-export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, base, ownerLinks, publicUrl, actions }: Props) {
+export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, base, ownerLinks, publicUrl, actions, vapid }: Props) {
   const [open, setOpen] = useState<string | null>(null)
   const [share, setShare] = useState<'closed' | 'open' | 'welcome'>('closed')
   // Someone arriving from a friend's link has no idea what this is. Say so
@@ -116,6 +120,7 @@ export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, b
       <section className="sheet">
         <div className="handle" aria-hidden="true" />
         {actions}
+        {!actions && vapid && <Bell endpoint={`/api/walk/${state.walk.slug}/push`} vapid={vapid} what="when they finish a stage" className="sheet-bell" />}
 
         <div className="status">
           <svg className="ring" viewBox="0 0 52 52" aria-hidden="true">

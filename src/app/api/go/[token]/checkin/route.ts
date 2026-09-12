@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { dbInsert } from '@/lib/db'
 import { buildRoute, snapToRoute } from '@/lib/route'
 import { getChoices, getWalkByToken } from '@/lib/walk'
+import { pushTo } from '@/lib/push'
 
 // "We're here": the end of a segment (segmentId) or an explicit km.
 export async function POST(req: Request, ctx: { params: Promise<{ token: string }> }) {
@@ -30,5 +31,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ token: string 
   if (km == null) return NextResponse.json({ error: 'bad request' }, { status: 400 })
   const caption = typeof body.caption === 'string' ? body.caption.trim().slice(0, 300) || null : null
   await dbInsert('ultreia_posts', { walk_id: auth.walk.id, walker: auth.walker.key, kind: 'checkin', caption, km, km_source: 'checkin', segment_id: segmentId })
+  // Everyone following hears that a stage is done.
+  const to = route.segmentStarts.find(s => s.id === segmentId)?.to
+  pushTo(auth.walk.id, 'follower', {
+    title: to ? `They’ve reached ${to}` : `${auth.walker.name} checked in`,
+    body: caption || `${km.toFixed(0)} km walked so far.`,
+    url: auth.walk.slug === 'ju-and-jit' ? '/' : `/w/${auth.walk.slug}`, tag: 'stage',
+  }).catch(() => {})
   return NextResponse.json({ ok: true, km })
 }

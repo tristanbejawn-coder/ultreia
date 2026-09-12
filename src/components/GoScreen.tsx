@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Figures from './Figures'
 import RouteScreen from './RouteScreen'
+import { Bell } from './Pwa'
 import { readExif } from '@/lib/exif'
 import { enqueue, drain, all } from '@/lib/queue'
 import { CLIP_MAX_BYTES, CLIP_SECONDS, readClip, uploadDirect } from '@/lib/clip'
@@ -33,7 +34,7 @@ function here(): Promise<{ lat: number; lng: number } | null> {
 
 type MapCfg = { tileUrl: string; attribution: string; terrainUrl?: string | null }
 
-export default function GoScreen({ token, map }: { token: string; map: MapCfg }) {
+export default function GoScreen({ token, map, vapid }: { token: string; map: MapCfg; vapid: string | null }) {
   const [me, setMe] = useState<Me | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [mode, setMode] = useState<'home' | 'photo' | 'clip' | 'diary' | 'checkin' | 'fork' | 'post'>('home')
@@ -242,6 +243,7 @@ export default function GoScreen({ token, map }: { token: string; map: MapCfg })
         </button>
       )}
 
+      <Bell endpoint={`/api/go/${token}/push`} vapid={vapid} what="when the post is in" className="dock-bell" />
       <button className="dock-hand" onClick={handOver}>{handed ? 'Sent' : 'Met another pilgrim? Send them Ultreia'}</button>
     </div>
   )

@@ -14,7 +14,7 @@ export default async function Page() {
   if (!state) return <main className="shell"><div className="empty"><b>Ultreia</b>No walk here yet.</div></main>
   return (
     <main className="shell">
-      <RouteScreen state={serialize(state)} tileUrl={tileUrl} attribution={attribution} terrainUrl={terrainUrl} ownerLinks={ownerLinks} publicUrl={publicUrl} base="" />
+      <RouteScreen state={serialize(state)} tileUrl={tileUrl} attribution={attribution} terrainUrl={terrainUrl} ownerLinks={ownerLinks} publicUrl={publicUrl} vapid={process.env.VAPID_PUBLIC_KEY || null} base="" />
       <Tabs base="" />
     </main>
   )

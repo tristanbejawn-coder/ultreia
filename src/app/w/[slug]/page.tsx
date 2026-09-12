@@ -16,7 +16,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
   const publicUrl = siteBase() + (!state || state.walk.slug === 'ju-and-jit' ? '' : `/w/${state.walk.slug}`)
   return (
     <main className="shell">
-      <RouteScreen state={serialize(state)} tileUrl={tileUrl} attribution={attribution} terrainUrl={terrainUrl} ownerLinks={ownerLinks} publicUrl={publicUrl} base={`/w/${slug}`} />
+      <RouteScreen state={serialize(state)} tileUrl={tileUrl} attribution={attribution} terrainUrl={terrainUrl} ownerLinks={ownerLinks} publicUrl={publicUrl} vapid={process.env.VAPID_PUBLIC_KEY || null} base={`/w/${slug}`} />
       <Tabs base={`/w/${slug}`} />
     </main>
   )
