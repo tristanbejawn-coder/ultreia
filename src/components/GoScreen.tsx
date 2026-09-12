@@ -88,14 +88,14 @@ export default function GoScreen({ token, map }: { token: string; map: MapCfg })
 
   async function pickClip(f: File, kind: 'clip' | 'diary') {
     setRefused(null)
-    if (f.size > CLIP_MAX_BYTES) { setRefused('That video is enormous. Record a shorter one.'); return }
+    if (f.size > CLIP_MAX_BYTES) { setRefused(`That one is ${Math.round(f.size / 1048576)} MB and the store takes ${Math.round(CLIP_MAX_BYTES / 1048576)}. Record it shorter, or turn the camera down to 1080p in Settings › Camera.`); return }
     try {
       const read = await readClip(f)
-      if (read.durationS > CLIP_SECONDS + 1) {
+      if (read.readable && read.durationS > CLIP_SECONDS + 1) {
         setRefused(`${read.durationS} seconds is too long — ${CLIP_SECONDS} is the most. Trim it in Photos and try again.`)
         return
       }
-      setClip({ kind, file: f, ...read, url: URL.createObjectURL(f) })
+      setClip({ kind, file: f, durationS: read.durationS, width: read.width, height: read.height, poster: read.poster, url: URL.createObjectURL(f) })
       setCaption(''); setMode(kind)
     } catch (e) {
       setRefused((e as Error).message)
@@ -198,7 +198,7 @@ export default function GoScreen({ token, map }: { token: string; map: MapCfg })
              onChange={e => { const f = e.target.files?.[0]; if (f) pick(f); e.target.value = '' }} />
       <input id="pick-clip" ref={clipRef} type="file" accept="video/*" className="file-hidden"
              onChange={e => { const f = e.target.files?.[0]; if (f) pickClip(f, 'clip'); e.target.value = '' }} />
-      <input id="pick-diary" ref={diaryRef} type="file" accept="video/*" className="file-hidden"
+      <input id="pick-diary" ref={diaryRef} type="file" accept="video/*" capture="user" className="file-hidden"
              onChange={e => { const f = e.target.files?.[0]; if (f) pickClip(f, 'diary'); e.target.value = '' }} />
 
       <div className="dock-row">
@@ -321,7 +321,7 @@ export default function GoScreen({ token, map }: { token: string; map: MapCfg })
         <div className="sheet">
           <h2>{clip.kind === 'diary' ? 'A diary entry' : 'A clip of the road'}</h2>
           <video className="pv" src={clip.url} controls playsInline muted />
-          <p className="label">{clip.durationS} seconds · goes up now, so it needs a bar of signal</p>
+          <p className="label">{clip.durationS ? `${clip.durationS} seconds · ` : ''}goes up now, so it needs a bar of signal</p>
           <label>A line for it</label>
           <textarea value={caption} onChange={e => setCaption(e.target.value)} maxLength={600}
                     placeholder={clip.kind === 'diary' ? 'Day three, and the feet have opinions…' : 'The sea all morning…'} rows={2} />
