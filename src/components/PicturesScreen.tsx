@@ -58,6 +58,7 @@ function Tile({ p, who, tz, onOpen }: { p: ClientState['posts'][number]; who: st
       {p.kind === 'photo' && p.mediaUrl && <img src={p.mediaUrl} alt={p.caption || ''} loading="lazy" width={p.width || undefined} height={p.height || undefined} />}
       {(p.kind === 'clip' || p.kind === 'diary') && <video src={p.mediaUrl || undefined} poster={p.posterUrl || undefined} muted playsInline preload="metadata" />}
       {count > 0 && <span className="react">{count}</span>}
+      {p.private && <span className="react keep">just for us</span>}
       <div className="cap">
         <b>{who} · {time}{p.km != null ? ` · ${kmLabel(p.km)}` : ''}{p.kind === 'diary' ? ' · diary' : ''}</b>
         {p.caption}

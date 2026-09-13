@@ -7,7 +7,10 @@ import { kmLabel } from './PicturesScreen'
 
 const EMOJI = ['❤️', '👏', '🥾', '🐚', '😂', '😮']
 
-export default function Lightbox({ state, id, onClose }: { state: ClientState; id: string; onClose: () => void }) {
+export default function Lightbox({ state, id, onClose, onSetPrivate }: {
+  state: ClientState; id: string; onClose: () => void
+  onSetPrivate?: (postId: string, keep: boolean) => Promise<void>
+}) {
   // Paging runs over everything with a picture, in the order the pictures
   // page shows them. It matters most on the map: photographs taken within a
   // few kilometres of each other land on the same few pixels, so only the top
@@ -28,6 +31,10 @@ export default function Lightbox({ state, id, onClose }: { state: ClientState; i
 
   const [reactions, setReactions] = useState<Record<string, number>>(post?.reactions || {})
   const [mine, setMine] = useState<string | null>(null)
+  // Moving a picture over to the family's page, or taking it back.
+  const [moving, setMoving] = useState(false)
+  const [moveErr, setMoveErr] = useState<string | null>(null)
+  useEffect(() => { setMoveErr(null) }, [cur])
   // A new picture carries its own count, and nobody has reacted to it yet.
   useEffect(() => {
     const p = media.find(x => x.id === cur) || state.posts.find(x => x.id === cur)
@@ -60,6 +67,14 @@ export default function Lightbox({ state, id, onClose }: { state: ClientState; i
   const seg = state.route.segments.find(s => s.id === post.segmentId)
   const when = `${fmtDate(post.takenAt, state.walk.timezone)} ${fmtTime(post.takenAt, state.walk.timezone)}`
 
+  async function move(keep: boolean) {
+    if (!onSetPrivate || !post) return
+    setMoving(true); setMoveErr(null)
+    try { await onSetPrivate(post.id, keep) }
+    catch (e) { setMoveErr((e as Error).message) }
+    finally { setMoving(false) }
+  }
+
   async function react(emoji: string) {
     let name = getName()
     if (!name) { name = window.prompt('Your name, so they know who it was from:')?.trim() || ''; if (!name) return; setName(name) }
@@ -71,7 +86,10 @@ export default function Lightbox({ state, id, onClose }: { state: ClientState; i
   return (
     <div className="lb" role="dialog" aria-modal="true" aria-label={post.caption || 'Photo'}>
       <div className="lb-top">
-        <span className="label" style={{ color: '#9BA5AD' }}>{walker} · {seg ? `${seg.from} → ${seg.to}` : ''}{post.km != null ? ` · ${kmLabel(post.km)}` : ''}</span>
+        <span className="label" style={{ color: '#9BA5AD' }}>
+          {post.private && <b className="keep-tag">Just for us</b>}
+          {walker} · {seg ? `${seg.from} → ${seg.to}` : ''}{post.km != null ? ` · ${kmLabel(post.km)}` : ''}
+        </span>
         <button onClick={onClose} aria-label="Close">CLOSE ✕</button>
       </div>
       <div className="lb-media" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
@@ -93,9 +111,20 @@ export default function Lightbox({ state, id, onClose }: { state: ClientState; i
         <div className="meta">
           {when}{post.kind === 'diary' ? ' · Diary' : ''}{idx >= 0 ? ` · ${idx + 1} of ${media.length}` : ''}
         </div>
-        <div className="emoji-row">
-          {EMOJI.map(e => <button key={e} className={mine === e ? 'on' : ''} onClick={() => react(e)} aria-label={`React ${e}`}>{e}{reactions[e] ? <span>{reactions[e]}</span> : null}</button>)}
-        </div>
+        {/* Nobody at home can react to a picture nobody at home can see. */}
+        {!post.private && (
+          <div className="emoji-row">
+            {EMOJI.map(e => <button key={e} className={mine === e ? 'on' : ''} onClick={() => react(e)} aria-label={`React ${e}`}>{e}{reactions[e] ? <span>{reactions[e]}</span> : null}</button>)}
+          </div>
+        )}
+        {onSetPrivate && (
+          <div className="lb-move">
+            <button className={post.private ? 'send' : 'keep'} onClick={() => move(!post.private)} disabled={moving}>
+              {moving ? 'One moment…' : post.private ? 'Send this one to everyone' : 'Move to just for us'}
+            </button>
+            {moveErr && <span className="warn">{moveErr}</span>}
+          </div>
+        )}
       </div>
     </div>
   )

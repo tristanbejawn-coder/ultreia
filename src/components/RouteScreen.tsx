@@ -22,13 +22,16 @@ type Props = {
   // The public key for push; the family page offers to tell people when a
   // stage is done, the walkers' own screen offers something else.
   vapid?: string | null
+  // Moves one picture between the pair's scrapbook and the family's page.
+  // Only their own screen passes it; only their own screen shows the button.
+  onSetPrivate?: (postId: string, keep: boolean) => Promise<void>
 }
 
 function plannedDate(startsOn: string | null, index: number): string | null {
   return startsOn ? fmtDatePlus(startsOn, index) : null
 }
 
-export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, base, ownerLinks, publicUrl, actions, vapid }: Props) {
+export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, base, ownerLinks, publicUrl, actions, vapid, onSetPrivate }: Props) {
   const [open, setOpen] = useState<string | null>(null)
   const [share, setShare] = useState<'closed' | 'open' | 'welcome'>('closed')
   // Someone arriving from a friend's link has no idea what this is. Say so
@@ -213,7 +216,7 @@ export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, b
         </Link>
       </section>
 
-      {open && <Lightbox state={state} id={open} onClose={() => setOpen(null)} />}
+      {open && <Lightbox state={state} id={open} onClose={() => setOpen(null)} onSetPrivate={onSetPrivate} />}
       {intro && <WelcomeSheet state={state} onClose={closeIntro} />}
       {share !== 'closed' && <ShareSheet name={state.walk.name} publicUrl={publicUrl} code={state.walk.code} ownerLinks={ownerLinks} welcome={share === 'welcome'} onClose={() => setShare('closed')} />}
     </>

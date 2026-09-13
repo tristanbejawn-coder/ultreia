@@ -173,10 +173,15 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
       for (const p of located) {
         const at = pointAt(pts, p.km as number)
         let m: HTMLElement
+        // Blue instead of white: one of the pair's own, kept back from the
+        // family's page. Only ever on their own screens — the family's state
+        // has no private pictures in it at all.
+        const keep = p.private ? ' keep' : ''
         if (p.kind === 'checkin' || p.kind === 'ping') { m = document.createElement('div'); m.className = 'mk-checkin' }
-        else if (p.kind === 'diary') { m = document.createElement('button'); m.className = 'mk-diary'; m.setAttribute('aria-label', 'Diary entry') }
+        else if (p.kind === 'diary') { m = document.createElement('button'); m.className = 'mk-diary' + keep; m.setAttribute('aria-label', p.private ? 'Diary entry, just for us' : 'Diary entry') }
         else {
-          m = document.createElement('button'); m.className = 'mk-photo'; m.setAttribute('aria-label', p.caption || 'Photo')
+          m = document.createElement('button'); m.className = 'mk-photo' + keep
+          m.setAttribute('aria-label', (p.caption || 'Photo') + (p.private ? ' · just for us' : ''))
           const src = p.posterUrl || p.mediaUrl
           if (src) m.style.backgroundImage = `url("${src}")`
           m.style.transform = `rotate(${((i++ % 5) - 2) * 4}deg)`

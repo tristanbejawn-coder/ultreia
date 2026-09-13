@@ -149,6 +149,13 @@ button.chip.fact:hover,button.chip.fact:focus-visible{border-color:var(--arrow);
   background:#1B2430;color:#fff;border:2px solid #fff;font-family:var(--mono);font-size:10px;line-height:15px;
   text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.45)}
 .mk-photo{position:relative}
+/* Theirs alone. Gold and white is the family's page; blue is the pair's own
+   scrapbook, on their own screens only. */
+.mk-photo.keep{border-color:#82B2DD;box-shadow:0 3px 10px rgba(0,0,0,.55),0 0 0 1px rgba(130,178,221,.45)}
+.mk-photo.keep:hover,.mk-photo.keep:focus-visible{border-color:#BBD8F2;box-shadow:0 4px 16px rgba(0,0,0,.65),0 0 0 4px rgba(130,178,221,.35)}
+.mk-photo.keep .n{background:#1B3247;border-color:#82B2DD}
+.mk-diary.keep{border-color:#82B2DD}
+.mk-diary.keep::after{border-left-color:#82B2DD}
 .mk-diary{width:30px;height:30px;border-radius:50%;border:2.5px solid #fff;background:rgba(27,36,48,.85);box-shadow:0 3px 10px rgba(0,0,0,.55);display:grid;place-items:center;cursor:pointer}
 .mk-diary::after{content:"";width:0;height:0;border-left:9px solid #F0B429;border-top:6px solid transparent;border-bottom:6px solid transparent;margin-left:3px}
 /* Facts on the ground. The ring is small on purpose — quieter than a
@@ -208,6 +215,7 @@ button.chip.fact:hover,button.chip.fact:focus-visible{border-color:var(--arrow);
 .tile .cap{font-size:13px;line-height:1.35;padding:6px 2px 4px;color:var(--ink-2)}
 .tile .cap b{font-family:var(--mono);font-weight:500;font-size:10.5px;letter-spacing:.08em;color:var(--ink-3);display:block;margin-bottom:2px}
 .tile .react{position:absolute;top:6px;right:6px;font-size:12px;background:rgba(27,36,48,.6);color:#fff;border-radius:12px;padding:2px 7px;font-family:var(--mono)}
+.tile .react.keep{top:auto;bottom:6px;right:6px;background:rgba(43,95,142,.85);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase}
 .empty{padding:40px 24px;text-align:center;color:var(--ink-2);font-size:15px}
 .empty b{display:block;font-family:var(--display);font-stretch:62%;font-weight:900;text-transform:uppercase;font-size:28px;line-height:.95;color:var(--ink);margin-bottom:8px}
 
@@ -227,6 +235,13 @@ button.chip.fact:hover,button.chip.fact:focus-visible{border-color:var(--arrow);
 .lb-cap{padding:14px 18px calc(18px + var(--safe-b))}
 .lb-cap p{margin:0 0 10px;font-size:16px}
 .lb-cap .meta{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#9BA5AD}
+.lb-top .keep-tag{display:inline-block;margin-right:8px;padding:2px 7px;border-radius:9px;background:#82B2DD;color:#12222F;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase}
+.lb-move{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+.lb-move button{background:rgba(130,178,221,.16);border:1px solid rgba(130,178,221,.5);color:#DCEAF7;border-radius:20px;padding:9px 14px;
+  font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+.lb-move button.send{background:#F0B429;border-color:#F0B429;color:#1B2430}
+.lb-move button:disabled{opacity:.55;cursor:default}
+.lb-move .warn{font-size:13px;color:#F0B429}
 .emoji-row{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
 .emoji-row button{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:6px 10px;font-size:16px;cursor:pointer;font-family:var(--mono)}
 .emoji-row button.on{background:#F0B429;color:#1B2430;border-color:#F0B429}
@@ -325,6 +340,7 @@ label.big-btn{cursor:pointer}
    Towns, not coordinates: it is how a walker knows where they were. */
 .place{margin:12px 0 4px;padding:12px;background:var(--ground);border-radius:12px}
 .place .place-acts{display:flex;flex-wrap:wrap;gap:8px}
+.dock-who .queue-pill.keep{color:#fff;background:var(--azul)}
 .place .hint{margin:8px 0 10px;font-size:13px;color:var(--ink-2)}
 .place .towns{display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow:auto;margin-bottom:10px}
 .place .town{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:46px;padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;font:inherit;font-size:16px;color:var(--ink);text-align:left;cursor:pointer}
@@ -347,6 +363,13 @@ label.big-btn{cursor:pointer}
 .sheet .pv{width:100%;max-height:44vh;object-fit:contain;background:var(--sunk);margin:0 0 10px}
 .sheet label{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin:10px 0 5px}
 .sheet input,.sheet textarea,.sheet select{width:100%;border:1px solid var(--line);background:var(--ground);color:var(--ink);font:inherit;padding:10px 12px;border-radius:2px}
+/* Post for everyone, or keep it: two full-width buttons rather than one
+   button and a switch, so there is nothing to read twice. */
+.ways{display:grid;gap:8px;margin-top:14px}
+.ways .btn{width:100%;padding:14px}
+.ways .hint{margin:2px 0 4px;font-size:13px;color:var(--ink-2)}
+.btn.keep{background:var(--azul);color:#fff}
+.btn.keep:hover{filter:brightness(1.06)}
 .sheet .row{display:flex;gap:8px;margin-top:12px}
 .sheet .row .btn{flex:1}
 .opt{display:block;width:100%;text-align:left;background:var(--ground);border:1px solid var(--line);padding:12px 14px;margin:0 0 8px;cursor:pointer;border-radius:2px}

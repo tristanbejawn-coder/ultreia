@@ -2,7 +2,7 @@
 // Without a database there is no walk to show: every page says so plainly.
 // can be seen full before Supabase exists.
 
-import { dbSelect, dbConfigured, publicUrl } from '@/lib/db'
+import { dbSelect, dbConfigured, publicUrl, signedUrls } from '@/lib/db'
 import { buildRoute, segmentAtKm, type Route } from '@/lib/route'
 import { CAMINOS, type Camino } from '@/data/caminos'
 
@@ -18,12 +18,17 @@ export type PostRow = {
   km: number | null; km_source: string | null; segment_id: string | null
   media_path: string | null; poster_path: string | null; width: number | null; height: number | null
   duration_s: number | null; transcript: string | null
+  // Kept between the two of them: their own scrapbook of the walk. Never
+  // leaves the server except to their own phones.
+  private: boolean
 }
 export type Post = PostRow & { media_url: string | null; poster_url: string | null; reactions: Record<string, number> }
 export type MessageRow = { id: string; from_name: string; body: string; written_at: string; delivered_at: string | null }
 
 export type WalkState = {
   walk: WalkRow
+  /** Whether the pair's private pictures are in `posts` (their phones only). */
+  withPrivate: boolean
   camino: Camino
   route: Route
   choices: Record<string, string>
@@ -71,7 +76,10 @@ function localDate(tz: string, d = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
 }
 
-export async function getWalkState(slug: string): Promise<WalkState | null> {
+// `withPrivate` is for the walkers' own screens, behind their private link.
+// Every other caller — the family page, the pictures page, the API the
+// browser polls — leaves it alone and never sees a private picture.
+export async function getWalkState(slug: string, withPrivate = false): Promise<WalkState | null> {
   const walk = await getWalk(slug)
   if (!walk) return null
   const camino = CAMINOS[walk.camino]
@@ -79,20 +87,36 @@ export async function getWalkState(slug: string): Promise<WalkState | null> {
   const route = buildRoute(walk.camino, walk.plan, choices)
 
   let posts: Post[] = []
+  // Every post, private ones included: how far along they are is read from
+  // these, whoever is looking.
+  let placing: Pick<PostRow, 'km' | 'kind' | 'taken_at'>[] = []
   let messages: MessageRow[] = []
   if (dbConfigured()) {
-    const rows = await dbSelect<PostRow>(`ultreia_posts?walk_id=eq.${walk.id}&deleted_at=is.null&select=id,walker,kind,caption,taken_at,lat,lng,km,km_source,segment_id,media_path,poster_path,width,height,duration_s,transcript&order=taken_at.desc&limit=500`)
-    const reacts = rows.length ? await dbSelect<{ post_id: string; emoji: string }>(`ultreia_reactions?post_id=in.(${rows.map(r => r.id).join(',')})&select=post_id,emoji`) : []
+    // Private pictures are read either way: they still say how far along the
+    // pair are, and being asked to post publicly to move the dot would be a
+    // strange price for keeping a photograph to yourself. They are dropped
+    // from the list below unless this is one of their own phones asking.
+    const rows = await dbSelect<PostRow>(`ultreia_posts?walk_id=eq.${walk.id}&deleted_at=is.null&select=id,walker,kind,caption,taken_at,lat,lng,km,km_source,segment_id,media_path,poster_path,width,height,duration_s,transcript,private&order=taken_at.desc&limit=500`)
+    placing = rows
+    const shown = withPrivate ? rows : rows.filter(r => !r.private)
+    const reacts = shown.length ? await dbSelect<{ post_id: string; emoji: string }>(`ultreia_reactions?post_id=in.(${shown.map(r => r.id).join(',')})&select=post_id,emoji`) : []
     const byPost: Record<string, Record<string, number>> = {}
     for (const r of reacts) { byPost[r.post_id] ??= {}; byPost[r.post_id][r.emoji] = (byPost[r.post_id][r.emoji] || 0) + 1 }
-    posts = rows.map(r => ({ ...r, media_url: publicUrl(r.media_path), poster_url: publicUrl(r.poster_path), reactions: byPost[r.id] || {} }))
+    // A private picture is served by a signed link that expires, not by the
+    // bucket's open door.
+    const signed = withPrivate
+      ? await signedUrls(shown.filter(r => r.private).flatMap(r => [r.media_path, r.poster_path]).filter((p): p is string => !!p))
+      : {}
+    const link = (path: string | null, isPrivate: boolean) =>
+      (isPrivate ? (path ? signed[path] ?? null : null) : publicUrl(path))
+    posts = shown.map(r => ({ ...r, media_url: link(r.media_path, r.private), poster_url: link(r.poster_path, r.private), reactions: byPost[r.id] || {} }))
     messages = await dbSelect<MessageRow>(`ultreia_messages?walk_id=eq.${walk.id}&deleted_at=is.null&select=id,from_name,body,written_at,delivered_at&order=written_at.desc&limit=200`)
   }
 
   // Position: the furthest kilometre they've been placed at, by check-in or
   // by a located post. Never goes backwards because of a day trip.
   let positionKm = 0, positionSource: WalkState['positionSource'] = 'start', lastSeenAt: string | null = null
-  for (const p of posts) {
+  for (const p of placing) {
     if (p.km == null) continue
     if (p.km > positionKm) { positionKm = p.km; positionSource = p.kind === 'checkin' ? 'checkin' : p.kind === 'ping' ? 'ping' : 'post' }
     if (!lastSeenAt || p.taken_at > lastSeenAt) lastSeenAt = p.taken_at
@@ -104,7 +128,7 @@ export async function getWalkState(slug: string): Promise<WalkState | null> {
     ? Math.round((Date.parse(walk.starts_on) - Date.parse(today)) / 86400000)
     : null
 
-  return { walk, camino, route, choices, posts, positionKm, positionSource, lastSeenAt, started, finished, daysToGo, messages }
+  return { walk, withPrivate, camino, route, choices, posts, positionKm, positionSource, lastSeenAt, started, finished, daysToGo, messages }
 }
 
 export function todaySegment(state: WalkState) {
@@ -125,7 +149,7 @@ export function serialize(state: WalkState) {
     forks: state.camino.forks.map(f => ({ id: f.id, at: f.at, atName: state.camino.nodes.find(n => n.id === f.at)?.name, question: f.question, options: f.options, chosen: state.choices[f.id] || null, defaultOption: f.defaultOption })),
     position: { km: +state.positionKm.toFixed(2), source: state.positionSource, lastSeenAt: state.lastSeenAt, segment: seg ? { id: seg.id, name: seg.name, from: seg.from, to: seg.to, character: seg.character, km: +(seg.endKm - seg.km).toFixed(1) } : null },
     started: state.started, finished: state.finished, daysToGo: state.daysToGo,
-    posts: state.posts.map(p => ({ id: p.id, walker: p.walker, kind: p.kind, caption: p.caption, takenAt: p.taken_at, km: p.km, segmentId: p.segment_id, mediaUrl: p.media_url, posterUrl: p.poster_url, width: p.width, height: p.height, durationS: p.duration_s, reactions: p.reactions })),
+    posts: state.posts.map(p => ({ id: p.id, walker: p.walker, kind: p.kind, caption: p.caption, takenAt: p.taken_at, km: p.km, segmentId: p.segment_id, mediaUrl: p.media_url, posterUrl: p.poster_url, width: p.width, height: p.height, durationS: p.duration_s, reactions: p.reactions, private: p.private })),
     messages: state.messages,
   }
 }

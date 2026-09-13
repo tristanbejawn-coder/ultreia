@@ -8,7 +8,8 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 30
 
 // multipart: file (jpeg, already resized on the phone), caption, takenAt,
-// lat, lng (from the original's EXIF or the phone), kmSource, kind
+// lat, lng (from the original's EXIF or the phone), kmSource, kind,
+// private ('1' for the pair's own scrapbook rather than the family's page)
 export async function POST(req: Request, ctx: { params: Promise<{ token: string }> }) {
   const { token } = await ctx.params
   const auth = await getWalkByToken(token)
@@ -29,6 +30,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ token: string 
   const file = form.get('file')
   const kind = String(form.get('kind') || 'photo')
   const caption = String(form.get('caption') || '').trim().slice(0, 600) || null
+  const isPrivate = String(form.get('private') || '') === '1'
   let lat = num(form.get('lat')), lng = num(form.get('lng'))
   let takenAt = String(form.get('takenAt') || '')
   let kmSource = String(form.get('kmSource') || '')
@@ -86,6 +88,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ token: string 
     lat: isFinite(lat) ? lat : null, lng: isFinite(lng) ? lng : null,
     km, km_source: km != null ? kmSource || 'device' : null, segment_id: segmentId,
     media_path: mediaPath, poster_path: posterPath, duration_s: durationS, width, height,
+    private: isPrivate,
   }
 
   if (idempotent) {

@@ -104,7 +104,7 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
   }
 
   // Clips need signal now; there is no sensible way to hold one on the phone.
-  async function postClip() {
+  async function postClip(keep = false) {
     if (!clip) return
     setSending('Sending…')
     try {
@@ -119,6 +119,7 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
       fd.append('mediaPath', mediaPath)
       if (posterPath) fd.append('posterPath', posterPath)
       fd.append('durationS', String(clip.durationS))
+      if (keep) fd.append('private', '1')
       fd.append('width', String(clip.width)); fd.append('height', String(clip.height))
       if (h) { fd.append('lat', String(h.lat)); fd.append('lng', String(h.lng)); fd.append('kmSource', 'device') }
       const res = await fetch(`/api/go/${token}/post`, { method: 'POST', body: fd })
@@ -130,11 +131,24 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
     }
   }
 
-  async function post() {
+  // `keep` is the scrapbook: the picture goes up as usual, on their own map
+  // and in their own album, and never onto the family's page.
+  async function post(keep = false) {
     if (!draft) return
-    await enqueue({ id: crypto.randomUUID(), token, kind: 'photo', blob: draft.blob, caption, takenAt: draft.takenAt, lat: draft.lat, lng: draft.lng, km: draft.km, kmSource: draft.kmSource, width: draft.width, height: draft.height, createdAt: Date.now(), tries: 0 })
+    await enqueue({ id: crypto.randomUUID(), token, kind: 'photo', blob: draft.blob, caption, takenAt: draft.takenAt, lat: draft.lat, lng: draft.lng, km: draft.km, kmSource: draft.kmSource, private: keep, width: draft.width, height: draft.height, createdAt: Date.now(), tries: 0 })
     setDraft(null); setPlacing(false); setMode('home')
     drain(sink, refuse).then(load)
+  }
+
+  // A picture kept back on the road is often the one worth showing later,
+  // and the other way round: the lightbox on their own map can move either.
+  async function setPostPrivate(postId: string, keep: boolean) {
+    const r = await fetch(`/api/go/${token}/visibility`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ postId, private: keep }),
+    }).catch(() => null)
+    if (!r || !r.ok) throw new Error('That didn’t change. Try again when there’s signal.')
+    await load()
   }
 
   const [pinging, setPinging] = useState(false)
@@ -180,6 +194,7 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
   const toGo = Math.max(0, state.route.totalKm - state.position.km)
   const nextFork = state.forks.find(f => { const s = state.route.segments.find(x => x.from === f.atName); return s && state.position.km < s.km + 0.1 && !f.chosen })
   const forkNear = nextFork && (() => { const s = state.route.segments.find(x => x.from === nextFork.atName); return s ? s.km - state.position.km <= 60 : false })()
+  const kept = state.posts.filter(p => p.private).length
   const tonight = bundle.filter(m => !m.delivered_at)
   const delivered = bundle.filter(m => m.delivered_at)
   // Their own buttons: one row of icons under the map, because the map is the
@@ -190,6 +205,7 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
         {state.walk.avatarUrl && <span className="avatar" style={{ backgroundImage: `url("${state.walk.avatarUrl}")` }} aria-hidden="true" />}
         <span className="label">Buen Camino, {walker.name}</span>
         {queued > 0 && <span className="queue-pill">{queued} waiting</span>}
+        {kept > 0 && <span className="queue-pill keep">{kept} just for us</span>}
       </div>
 
       {/* Labels wrapping the inputs: a scripted click on a hidden file input
@@ -255,7 +271,7 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
       {/* Their home page is the map the family sees, with their own buttons
           on it. Everything else opens over the top. */}
       <RouteScreen state={state} tileUrl={map.tileUrl} attribution={map.attribution} terrainUrl={map.terrainUrl}
-                   base="" publicUrl={publicUrl} actions={walkerActions} />
+                   base="" publicUrl={publicUrl} actions={walkerActions} onSetPrivate={setPostPrivate} />
 
       {mode !== 'home' && (
         <div className="go-veil" onClick={() => { setMode('home'); setDraft(null); setPlacing(false) }}>
@@ -312,9 +328,14 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
             )}
           </div>
 
-          <div className="row">
+          {/* Two ways out, both plainly named. Not every photograph is for
+              everyone, and a scrapbook of the ones that aren't is the point
+              of this button. */}
+          <div className="ways">
+            <button className="btn" onClick={() => post(false)} disabled={!draft.kmSource && !noPlace}>Post for everyone</button>
+            <button className="btn keep" onClick={() => post(true)} disabled={!draft.kmSource && !noPlace}>Keep it just for us</button>
+            <p className="hint">Kept pictures sit on your own map in blue. Nobody at home sees them until you send one over.</p>
             <button className="btn ghost" onClick={() => { setDraft(null); setPlacing(false); setMode('home') }}>Cancel</button>
-            <button className="btn" onClick={post} disabled={!draft.kmSource && !noPlace}>Post</button>
           </div>
         </div>
       )}
@@ -327,9 +348,10 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
           <label>A line for it</label>
           <textarea value={caption} onChange={e => setCaption(e.target.value)} maxLength={600}
                     placeholder={clip.kind === 'diary' ? 'Day three, and the feet have opinions…' : 'The sea all morning…'} rows={2} />
-          <div className="row">
+          <div className="ways">
+            <button className="btn" onClick={() => postClip(false)} disabled={!!sending}>{sending || 'Post for everyone'}</button>
+            <button className="btn keep" onClick={() => postClip(true)} disabled={!!sending}>{sending ? 'Sending…' : 'Keep it just for us'}</button>
             <button className="btn ghost" onClick={() => { setClip(null); setMode('home') }} disabled={!!sending}>Cancel</button>
-            <button className="btn" onClick={postClip} disabled={!!sending}>{sending || 'Post'}</button>
           </div>
         </div>
       )}

@@ -9,6 +9,7 @@ export type QueuedPost = {
   blob: Blob | null; caption: string; takenAt: string
   lat: number | null; lng: number | null; kmSource: string
   km: number | null            // set when the walker placed it by hand
+  private?: boolean            // theirs alone: the scrapbook, not the family's page
   width: number | null; height: number | null; createdAt: number; tries: number
 }
 
@@ -43,6 +44,7 @@ export async function drain(onChange?: (left: number) => void, onFailed?: (p: Qu
     if (it.lat != null && it.lng != null) { fd.append('lat', String(it.lat)); fd.append('lng', String(it.lng)) }
     fd.append('kmSource', it.kmSource)
     if (it.km != null) fd.append('km', String(it.km))
+    if (it.private) fd.append('private', '1')
     if (it.width) fd.append('width', String(it.width)); if (it.height) fd.append('height', String(it.height))
     try {
       const res = await fetch(`/api/go/${it.token}/post`, { method: 'POST', body: fd })

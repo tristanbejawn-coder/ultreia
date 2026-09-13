@@ -102,6 +102,23 @@ export async function signedUploadUrl(path: string): Promise<{ path: string; url
   return { path, url: `${URL_BASE}/storage/v1${json.url}` }
 }
 
+// Links to the walkers' own private pictures. The bucket serves anything
+// whose path you know, and a scrapbook that is only unlisted is not private:
+// these URLs are signed, expire, and are handed to nobody but the two of them.
+export async function signedUrls(paths: string[], expiresIn = 43200): Promise<Record<string, string>> {
+  const wanted = [...new Set(paths.filter(Boolean))]
+  if (!wanted.length || !dbConfigured()) return {}
+  const res = await fetch(`${URL_BASE}/storage/v1/object/sign/${BUCKET}`, {
+    method: 'POST', headers: headers({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ expiresIn, paths: wanted }),
+  })
+  if (!res.ok) { console.warn(`sign urls: ${res.status} ${await res.text()}`); return {} }
+  const rows = await res.json() as { path?: string; signedURL?: string; error?: string | null }[]
+  const out: Record<string, string> = {}
+  for (const r of rows) if (r.path && r.signedURL) out[r.path] = `${URL_BASE}/storage/v1${r.signedURL}`
+  return out
+}
+
 export function publicUrl(path: string | null | undefined): string | null {
   if (!path) return null
   if (/^https?:\/\//.test(path) || path.startsWith('/')) return path
