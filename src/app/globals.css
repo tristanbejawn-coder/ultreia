@@ -3,6 +3,7 @@
   --ink:#1B2430; --ink-2:#59646F; --ink-3:#8A939B; --line:#CBD1CC;
   --arrow:#E09B0B; --arrow-ink:#8A6206; --azul:#2B5F8E; --euc:#6E7F6A;
   --map-ground:#0E1418;
+  --disc:#E7E9E6; --disc-line:#CBD1CC;
   --shadow:0 1px 2px rgba(27,36,48,.06),0 8px 24px -16px rgba(27,36,48,.28);
   --display:"Archivo","Arial Narrow","Helvetica Neue",Arial,sans-serif;
   --mono:"DM Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
@@ -17,6 +18,8 @@
     --ground:#14181C; --surface:#1C2229; --sunk:#10151A;
     --ink:#E4E7E4; --ink-2:#9BA5AD; --ink-3:#6E7982; --line:#2E363E;
     --arrow:#F0B429; --arrow-ink:#F0B429; --azul:#82B2DD; --euc:#96A790;
+    /* Discs on a dark sheet were a shade darker than the sheet: invisible. */
+    --disc:#2A323B; --disc-line:#3A444F;
     --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -18px rgba(0,0,0,.9);
   }
 }
@@ -284,8 +287,8 @@ label.big-btn{cursor:pointer}
    otherwise turn the photo, clip and diary labels back into blocks and put
    the words beside the discs. */
 .dock-row .dock-btn{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;padding:0;margin:0;background:none;border:0;box-shadow:none;color:var(--ink);cursor:pointer;font:inherit;min-height:0;letter-spacing:0;text-transform:none}
-.dock-btn svg{width:46px;height:46px;padding:12px;border-radius:50%;background:var(--ground);box-shadow:inset 0 0 0 1px var(--line);color:var(--ink);transition:transform .12s ease,background .15s}
-.dock-row .dock-btn b{font-family:var(--mono);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:500;color:var(--ink-3);white-space:nowrap}
+.dock-btn svg{width:46px;height:46px;padding:12px;border-radius:50%;background:var(--disc);box-shadow:inset 0 0 0 1px var(--disc-line);color:var(--ink);transition:transform .12s ease,background .15s}
+.dock-row .dock-btn b{font-family:var(--mono);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:500;color:var(--ink-2);white-space:nowrap}
 .dock-btn.gold svg{background:var(--arrow);box-shadow:0 6px 16px -6px rgba(224,155,11,.7);color:#1B2430}
 .dock-btn.gold b{color:var(--ink)}
 .dock-btn:active svg{transform:scale(.92)}
