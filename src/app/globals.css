@@ -228,7 +228,9 @@ button.chip.fact:hover,button.chip.fact:focus-visible{border-color:var(--arrow);
 .lb-top>button{flex:none;white-space:nowrap}
 .lb-top button{background:none;border:0;color:#E4E7E4;font-family:var(--mono);font-size:12px;letter-spacing:.1em;cursor:pointer;padding:6px}
 .lb-media{display:grid;place-items:center;min-height:0;padding:0 8px}
-.lb-media img,.lb-media video{max-height:100%;max-width:100%;object-fit:contain}
+/* Sized to its cell rather than to itself: a tall photograph used to spill
+   twenty pixels over its own caption. */
+.lb-media img,.lb-media video{width:100%;height:100%;max-height:100%;max-width:100%;object-fit:contain}
 .lb-media{position:relative}
 .lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:0;
   background:rgba(27,36,48,.55);color:#E4E7E4;display:grid;place-items:center;cursor:pointer;padding:0}
