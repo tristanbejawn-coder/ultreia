@@ -334,7 +334,7 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
           <div className="ways">
             <button className="btn" onClick={() => post(false)} disabled={!draft.kmSource && !noPlace}>Post for everyone</button>
             <button className="btn keep" onClick={() => post(true)} disabled={!draft.kmSource && !noPlace}>Keep it just for us</button>
-            <p className="hint">Kept pictures sit on your own map in blue. Nobody at home sees them until you send one over.</p>
+            <p className="hint">Kept ones turn up blue on your own map only. You can send one over later.</p>
             <button className="btn ghost" onClick={() => { setDraft(null); setPlacing(false); setMode('home') }}>Cancel</button>
           </div>
         </div>

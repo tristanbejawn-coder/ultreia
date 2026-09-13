@@ -329,7 +329,10 @@ label.big-btn{cursor:pointer}
 .go-veil{position:fixed;inset:0;z-index:40;background:rgba(14,20,24,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center;padding:0}
 .go-panel{width:100%;max-width:720px;max-height:92dvh;overflow:auto;background:var(--ground);border-radius:20px 20px 0 0;padding:8px 0 calc(16px + var(--safe-b));box-shadow:0 -14px 44px rgba(0,0,0,.45)}
 .go-panel .sheet{margin:0 12px 12px}
-.go-panel video.pv{width:100%;border-radius:10px;background:#000;max-height:52dvh}
+.go-panel video.pv{width:100%;border-radius:10px;background:#000;max-height:42dvh}
+/* Both ways out have to be on the screen with the picture, not below it:
+   nobody scrolls a sheet to find the button they came for. */
+.go-panel .sheet .pv{max-height:30dvh}
 
 /* The owner's own way into a walker's screen, for seeing what they see. */
 .link-row.walker .walker-acts{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 8px}
@@ -367,7 +370,8 @@ label.big-btn{cursor:pointer}
    button and a switch, so there is nothing to read twice. */
 .ways{display:grid;gap:8px;margin-top:14px}
 .ways .btn{width:100%;padding:14px}
-.ways .hint{margin:2px 0 4px;font-size:13px;color:var(--ink-2)}
+.ways .hint{margin:0;font-size:12.5px;line-height:1.35;color:var(--ink-2)}
+.ways .btn.ghost{padding:10px}
 .btn.keep{background:var(--azul);color:#fff}
 .btn.keep:hover{filter:brightness(1.06)}
 .sheet .row{display:flex;gap:8px;margin-top:12px}
