@@ -90,7 +90,7 @@ const nodes: Node[] = [
 
 const segments: Segment[] = [
   // ---- Coastal (Caminho da Costa / Senda Litoral interleave) ----
-  { id: 'porto-vila-do-conde',     from: 'porto',         to: 'vila-do-conde', km: 28.5, name: 'Porto → Vila do Conde',       character: 'Down the Douro to the sea, then boardwalks and beaches all the way; flat, long, exposed' },
+  { id: 'porto-vila-do-conde',     from: 'porto',         to: 'vila-do-conde', km: 35,   name: 'Porto → Vila do Conde',       character: 'Down the Douro to Foz, then the seafront, boardwalks and beaches all the way; flat, long, exposed' },
   { id: 'vila-do-conde-esposende', from: 'vila-do-conde', to: 'esposende',     km: 23.7, name: 'Vila do Conde → Esposende',   character: 'Beach, then dunes and pine; flat' },
   { id: 'esposende-viana',         from: 'esposende',     to: 'viana',         km: 26.3, name: 'Esposende → Viana do Castelo',character: 'Inland through villages, one real hill, then the Lima bridge', ascent: 350 },
   { id: 'viana-caminha',           from: 'viana',         to: 'caminha',       km: 26.6, name: 'Viana → Caminha',             character: 'Cliff paths and fishing villages; the Minho appears', ascent: 300 },
@@ -188,9 +188,9 @@ export const PORTUGUES: Camino = {
   name: 'Camino Portugués',
   nodes, segments, forks,
   routes: [
-    { id: 'coastal', name: 'Coastal (Caminho da Costa)', from: 'porto', plan: coastalPlan, km: 274, days: '12–15',
+    { id: 'coastal', name: 'Coastal (Caminho da Costa)', from: 'porto', plan: coastalPlan, km: 281, days: '12–15',
       blurb: 'Sea on your left for eight days, then inland through Galicia. Boardwalks, fishing towns, the boat over the Minho. Marking gets confusing around Vigo.' },
-    { id: 'litoral', name: 'Litoral (Senda Litoral)', from: 'porto', plan: coastalPlan, km: 280, days: '12–15',
+    { id: 'litoral', name: 'Litoral (Senda Litoral)', from: 'porto', plan: coastalPlan, km: 284, days: '12–15',
       blurb: 'The Coastal’s beach-side twin: the same towns, but on the sand and the boardwalks wherever there are any. Flattest of all, and the least marked — the two interleave, so choose each morning.' },
     { id: 'central', name: 'Central', from: 'porto', plan: centralPlan, km: 243.5, days: '10–13',
       blurb: 'The classic, and the best marked. Roman roads, Barcelos, Ponte de Lima, the Labruja climb, then the same road through Galicia.' },

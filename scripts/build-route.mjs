@@ -20,6 +20,7 @@ const RAW = path.join(ROOT, 'scripts', 'raw')
 const OUT = path.join(ROOT, 'src', 'data', 'segments', 'index.json')
 const NODES = JSON.parse(await readFile(path.join(ROOT, 'src', 'data', 'nodes.json'), 'utf8'))
 const OFFLINE = process.argv.includes('--offline')
+const ONLY = (process.argv.find(a => a.startsWith('--only=')) || '').slice(7)   // rebuild one segment, keep the rest
 const MIRRORS = [
   'https://overpass.kumi.systems/api/interpreter',
   'https://overpass.private.coffee/api/interpreter',
@@ -31,7 +32,12 @@ const UA = 'ultreia-route-builder/0.1 (camino walk tracker; contact via github t
 const COSTA = 6100606, CENTRAL = 12786090, ESPIRITUAL = 6259246   // CENTRAL: 'Caminho Português de Santiago', Coimbra → Santiago
 const SOURCES = {
   // Coastal: whole relations (rel-<id>.json) or Costa ways clipped near Porto
-  'porto-vila-do-conde':      { rel: [COSTA, 9044581, 17600329, 18091699], bbox: [41.13, -8.72, 41.20, -8.58] },
+  // Out of Porto the pilgrims walk the Senda Litoral: down the Douro to Foz,
+  // then the seafront to Matosinhos. OSM has no relation for that stretch
+  // (the Costa relation climbs north through the city instead), so it is
+  // walked by the foot router through riverside waypoints and joined to the
+  // mapped boardwalk relations from Matosinhos on.
+  'porto-vila-do-conde':      { walk: [[-8.6140, 41.1405], [-8.6470, 41.1470], [-8.6650, 41.1478], [-8.6855, 41.1490], [-8.6830, 41.1580]], then: { rel: [17600329, 18091699], from: [-8.6929, 41.1875] } },
   'vila-do-conde-esposende':  { rel: [18091819, 18165121] },
   'esposende-viana':          { rel: [18165121] },
   'viana-caminha':            { rel: [18168169] },
@@ -64,9 +70,9 @@ const CENTRAL_DIRS = { pt: 'central-chunks-41.10_-8.75_42.06_-8.50', es: 'centra
 const OSRM = 'https://router.project-osrm.org/route/v1/foot'
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
-// A walked line between two points, for a connector with no OSM relation.
-async function walkRoute(from, to) {
-  const url = `${OSRM}/${from[0]},${from[1]};${to[0]},${to[1]}?overview=full&geometries=geojson`
+// A walked line through a list of points, for a stretch with no OSM relation.
+async function walkRoute(...points) {
+  const url = `${OSRM}/${points.map(p => `${p[0]},${p[1]}`).join(';')}?overview=full&geometries=geojson`
   const res = await fetch(url, { headers: { 'User-Agent': UA } })
   if (!res.ok) throw new Error(`osrm ${res.status}`)
   const json = await res.json()
@@ -228,6 +234,25 @@ function trim(line, from, to) {
   return line.slice(s, e + 1)
 }
 
+// A relation can leave a hole (an untagged boardwalk, a beach): any straight
+// jump over ~500 m is walked by the foot router instead, as long as the
+// router's line is not a wild detour.
+async function fillGaps(line) {
+  const out = [line[0]]
+  for (let i = 1; i < line.length; i++) {
+    const a = line[i - 1], b = line[i]
+    const straight = lengthKm([a, b])
+    if (straight > 0.5) {
+      try {
+        const walked = await walkRoute(a, b)
+        if (lengthKm(walked) < straight * 2) { out.push(...walked.slice(1, -1)); console.log(`   filled a ${straight.toFixed(1)} km gap near ${a[1].toFixed(3)},${a[0].toFixed(3)} with ${lengthKm(walked).toFixed(1)} km walked`) }
+      } catch (e) { console.warn(`   gap near ${a[1].toFixed(3)},${a[0].toFixed(3)} left straight: ${e.message}`) }
+    }
+    out.push(b)
+  }
+  return out
+}
+
 function lengthKm(line) {
   const R = 6371, toR = d => d * Math.PI / 180
   let km = 0
@@ -272,11 +297,19 @@ for (const [id, spec] of Object.entries(SOURCES)) {
   const [fromId, toId] = ends[id] || []
   const from = NODES[fromId], to = NODES[toId]
   if (!from || !to) { console.warn(`skip ${id}: unknown nodes`); continue }
+  if (ONLY && id !== ONLY) { if (existing[id]) out[id] = existing[id]; continue }
   try {
     let line
     if (spec.walk) {
-      if (OFFLINE && existing[id]) { out[id] = existing[id]; console.log(`${id.padEnd(26)} kept from cache`); continue }
-      line = await walkRoute(from, to)
+      if (OFFLINE && existing[id] && ONLY !== id) { out[id] = existing[id]; console.log(`${id.padEnd(26)} kept from cache`); continue }
+      const via = Array.isArray(spec.walk) ? spec.walk : []
+      const joinAt = spec.then ? spec.then.from : to
+      line = await walkRoute(from, ...via, joinAt)
+      if (spec.then) {
+        let ways = []
+        for (const rel of spec.then.rel) ways = ways.concat(await fetchWays(rel))
+        line = await fillGaps(line.concat(trim(stitch(ways, joinAt, to), joinAt, to)))
+      }
     } else {
       let ways = []
       if (spec.central) ways = await centralWays(spec.central)
