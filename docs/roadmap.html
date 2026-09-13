@@ -87,17 +87,30 @@ ul.items li .opt-tag{font-family:"DM Mono",ui-monospace,monospace;font-size:10px
 footer{margin-top:40px;font-family:"DM Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.06em;color:var(--ink-3)}
 footer a{color:var(--ink-2)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.date.here{border-color:var(--arrow)}
+.date.here .k{color:var(--arrow-ink)}
+.live{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin:14px 0 0;max-width:64ch}
+.live div{background:var(--surface);padding:10px 12px}
+.live .k{font-family:"DM Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.live .v{font-size:14.5px;line-height:1.35;margin-top:3px;color:var(--ink)}
+.stages{width:100%;max-width:64ch;border-collapse:collapse;margin:12px 0 0;font-size:14.5px;font-variant-numeric:tabular-nums}
+.stages td{padding:5px 8px 5px 0;border-top:1px solid var(--line);vertical-align:top}
+.stages tr:last-child td{border-bottom:1px solid var(--line)}
+.stages td:first-child{font-family:"DM Mono",ui-monospace,monospace;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap;width:1%}
+.stages td.km{text-align:right;font-family:"DM Mono",ui-monospace,monospace;font-size:12.5px;color:var(--ink-2);white-space:nowrap;width:1%}
+.stages td.fork{color:var(--azul)}
+.tablewrap{overflow-x:auto}
 </style>
 
 <div class="wrap">
 <header class="mast">
-  <p class="eyebrow">Roadmap &middot; as of Friday 4 September 2026</p>
+  <p class="eyebrow">Roadmap &middot; as of Sunday 13 September 2026</p>
   <h1 class="display">Ultreia <span>Roadmap</span></h1>
   <p class="standfirst">Where the build is against the walk. Gold is done, half-gold is running, dashed red is waiting on you, dotted is ahead. Dates on the right of a milestone are the walk&rsquo;s, not the build&rsquo;s.</p>
   <div class="dates">
-    <div class="date"><div class="k">Today</div><div class="v">Fri 4<small>Sep</small></div><div class="s">v1 code complete, live on GitHub, not yet deployed</div></div>
-    <div class="date"><div class="k">They leave</div><div class="v">Wed 9<small>Sep</small></div><div class="s">v1 must be on a phone by now. First stage the 10th</div></div>
-    <div class="date"><div class="k">Santiago</div><div class="v">~Tue 22<small>Sep</small></div><div class="s">12 coastal stages; the Espiritual would add a day</div></div>
+    <div class="date here"><div class="k">Today</div><div class="v">Sun 13<small>Sep</small></div><div class="s">They&rsquo;re in Porto. Credencials collected, first three posts up</div></div>
+    <div class="date"><div class="k">First stage</div><div class="v">Mon 14<small>Sep</small></div><div class="s">Porto to Vila do Conde by the Douro and the sea, 35 km</div></div>
+    <div class="date"><div class="k">Santiago</div><div class="v">~Fri 25<small>Sep</small></div><div class="s">12 stages, 268 km; the Espiritual would make it the 26th</div></div>
   </div>
   <div class="legend">
     <span><i class="dot done" style="position:static;width:12px;height:12px"></i> Done</span>
@@ -114,96 +127,98 @@ footer a{color:var(--ink-2)}
     <p class="when">Thu 3 &ndash; Fri 4 Sep<i>Build days 1&ndash;2</i></p>
     <h2>Research, concept, and the whole of v1</h2>
     <ul class="items">
-      <li class="done"><b>Research report.</b> Mobbin, Awwwards, the Camino app landscape; the gap nobody had built for.</li>
-      <li class="done"><b>Concept and plan</b>, four rounds; type system taken from San Rita; roles, screens, the message bundle.</li>
-      <li class="done"><b>Camino catalogue</b> with published distances, cross-checked; three real forks that Ju and Jit choose on the road.</li>
-      <li class="done"><b>Route engine.</b> Plan of segments to one polyline with kilometres; photos and check-ins snap onto it.</li>
-      <li class="done"><b>Coastal geometry</b> traced from OpenStreetMap, Porto to Redondela plus the Espiritual; lengths match the guidebooks.</li>
-      <li class="done"><b>Route page</b> on satellite: walked trail in gold, road ahead dotted, a camera that shows the route then dives to them.</li>
-      <li class="done"><b>Pictures</b> by stage with a lightbox and reactions. <b>The post</b>: prompted messages, name given once.</li>
-      <li class="done"><b>Walkers&rsquo; screen</b> behind private links: photo with caption, location from the picture or the phone, queued until there&rsquo;s signal; &ldquo;we&rsquo;re here&rdquo;; fork cards; tonight&rsquo;s bundle.</li>
-      <li class="done"><b>Their marker is their photo.</b> Drawn figures tried twice and retired to a fallback.</li>
-      <li class="done"><b>Repository</b> <span class="mono">tristanbejawn-coder/ultreia</span>, schema multi-walk from migration one.</li>
+      <li class="done"><b>Research, concept and plan</b>: the Camino app landscape, four rounds of concept, type taken from San Rita.</li>
+      <li class="done"><b>Camino catalogue and route engine</b>: published distances, three real forks, photos and check-ins snapping onto one line.</li>
+      <li class="done"><b>The family&rsquo;s page</b> on satellite, pictures by stage with reactions, and the post with names given once.</li>
+      <li class="done"><b>The walkers&rsquo; screen</b> behind private links: photo, location from the picture or the phone, a queue for no signal, &ldquo;we&rsquo;re here&rdquo;, fork cards.</li>
+      <li class="done"><b>Sign-in, owner accounts, the new-walk flow and Stripe Checkout</b>, built early as migrations 003&ndash;006.</li>
+    </ul>
+  </div>
+
+  <div class="ms">
+    <span class="dot done"></span>
+    <p class="when">Fri 4 &ndash; Sat 5 Sep<i>First deploy</i></p>
+    <h2>Live, on a real database</h2>
+    <ul class="items">
+      <li class="done"><b>Netlify</b> site <span class="mono">jujitcamino</span> deploying from <span class="mono">main</span>; <b>Supabase</b> tables in &ldquo;We Out Here Photos&rdquo;, migrations 001&ndash;007 run.</li>
+      <li class="done"><b>Imagery checked</b> on real tiles; the header clears the status bar once installed; facts stand down under it.</li>
+      <li class="done"><b>Photographs on the map can all be tapped.</b> Prints that land on each other collapse to one with a count, and the lightbox pages through the rest.</li>
+      <li class="wait"><b>Domain</b>: <span class="mono">ultreia.bejawn.studio</span> still doesn&rsquo;t resolve. Everyone is on <span class="mono">jujitcamino.netlify.app</span> meanwhile.<span class="you">you &middot; CNAME</span></li>
+    </ul>
+  </div>
+
+  <div class="ms">
+    <span class="dot done"></span>
+    <p class="when">Sat 5 &ndash; Sun 13 Sep<i>Rehearsal, on their phones</i></p>
+    <h2>Proven where it matters</h2>
+    <ul class="items">
+      <li class="done"><b>The camera roll opens natively on iPhone</b>: the button is a real file input now, not a scripted click Safari ignores.</li>
+      <li class="done"><b>A photograph placed by hand lands there</b>, not at 0,0 in the Atlantic. A picture with no place can go up anyway, under <i>Not on the road</i>.</li>
+      <li class="done"><b>A walker&rsquo;s link opens the map</b>, with a floating dock underneath: photo, clip, diary, where we are, arrived, the post. Their links open and copy from your account.</li>
+      <li class="done"><b>Clips and diaries</b> go straight to storage by signed link: 30 seconds, 48&nbsp;MB, a poster frame, and a diary recorded from the front camera. This replaced the Cloudflare plan, so there&rsquo;s no account to set up.</li>
+      <li class="done"><b>Bad signal can&rsquo;t double a photo.</b> Each queued post carries its own id; a post the server refuses tells the walker instead of vanishing.</li>
+      <li class="done"><b>Background trackers of any shape</b>: OwnTracks, GPSLogger or Traccar, same throttle and off-route rules.</li>
+      <li class="done"><b>Push, both ways.</b> Followers get a bell when a stage completes; the walkers get one when the post is in at 19:00, fired by a scheduled function. One phone subscribed so far.</li>
+      <li class="done"><b>The whole route is real.</b> Stage one re-traced down the Douro to Foz and up the boardwalks (35&nbsp;km on the ground); every stage to Santiago drawn from OpenStreetMap, both boat crossings excepted.</li>
+      <li class="done"><b>A scrapbook of their own.</b> Any picture can be kept for the two of them: it shows blue on their map, never reaches the family&rsquo;s page, and is served by an expiring link.</li>
+      <li class="done"><b>The demo walk is gone</b> from code, repository and database. One walk, theirs, starting Monday.</li>
     </ul>
   </div>
 
   <div class="ms">
     <span class="dot today"></span>
-    <p class="when">Now</p>
-    <h2>Running in the background</h2>
+    <p class="when">Sun 13 Sep<i>Today &middot; Porto</i></p>
+    <h2>On their phones, for real</h2>
+    <p>The countdown reads one day. The family&rsquo;s page has them at the cathedral, 0.3&nbsp;km in.</p>
+    <div class="live">
+      <div><div class="k">Ju &middot; photo</div><div class="v">Beginning of our Camino journey</div></div>
+      <div><div class="k">Jit &middot; clip</div><div class="v">Arriving in Porto to start the Camino</div></div>
+      <div><div class="k">Jit &middot; photo</div><div class="v">Porto Cathedral for the credencials</div></div>
+      <div><div class="k">Waiting for 19:00</div><div class="v">Two messages from you</div></div>
+    </div>
     <ul class="items">
-      <li class="now"><b>Inland geometry</b>, Redondela to Santiago and the Minho link. Portugal done, Galicia one chunk in five; the OSM mirror is slow. Straight lines stand in on the map meanwhile.</li>
-    </ul>
-  </div>
-
-  <div class="ms">
-    <span class="dot wait"></span>
-    <p class="when">Fri 4 &ndash; Sat 5 Sep<i>Nothing moves without these</i></p>
-    <h2>First deploy</h2>
-    <ul class="items">
-      <li class="wait"><b>Netlify</b>: import the repo, deploy once with no environment variables. Preview mode shows the real map.<span class="you">you</span></li>
-      <li class="wait"><b>Domain</b>: <span class="mono">ultreia.bejawn.studio</span> on the Netlify site, CNAME at your DNS.<span class="you">you</span></li>
-      <li class="wait"><b>Supabase</b> project; run migrations 001 and 002 with the two tokens replaced; URL and service key into Netlify.<span class="you">you</span></li>
-      <li><b>Check the imagery and the gold trail</b> against the real coast, which this sandbox can&rsquo;t show. Tune the halo, the label sizes, the dive.</li>
-    </ul>
-    <div class="card"><p class="t">Why it&rsquo;s gating</p><p>Every remaining check before the 9th &mdash; posting from a real phone, the map on real tiles, the install &mdash; needs a live URL and a database. The build itself is done; the next five days are testing on phones.</p></div>
-  </div>
-
-  <div class="ms">
-    <span class="dot next"></span>
-    <p class="when">Sat 6 &ndash; Mon 8 Sep<i>Rehearsal weekend</i></p>
-    <h2>Prove it on their phones</h2>
-    <ul class="items">
-      <li><b>Private links on both home screens.</b> Open <span class="mono">/go/&lt;token&gt;</span> on Ju&rsquo;s and Jit&rsquo;s phones, add to home screen, name it.</li>
-      <li><b>Sunday walk.</b> Both post photos from the garden or a real walk; confirm the location survives an iPhone upload and lands on the line. If it doesn&rsquo;t, the fallback to phone location is already built and the fix is in the crop step.</li>
-      <li><b>Family invited.</b> The public link out to everyone; names given once; send-off messages start piling up for the first evening.</li>
-      <li><b>Inland geometry committed</b> once the download completes; the whole route real.</li>
-      <li class="opt"><b>Push notifications</b> if there&rsquo;s time: generate VAPID keys, add to Netlify. Without them the app still works; followers refresh instead of being pinged.<span class="opt-tag">optional before the 9th</span></li>
+      <li class="wait"><b>Delete the test post before they set off.</b> &ldquo;Test private &mdash; delete me&rdquo; sits in Ju&rsquo;s scrapbook at km 12. The family never sees it, but their own map will open 12&nbsp;km up the coast before they&rsquo;ve walked a step.<span class="you">you &middot; say the word</span></li>
+      <li class="now"><b>Install check</b>: both home-screen icons open their own link, and Ju&rsquo;s bell is on as well as Jit&rsquo;s.</li>
     </ul>
   </div>
 
   <div class="ms">
     <span class="dot next"></span>
-    <p class="when">Wed 9 Sep<i>They leave &middot; Thu 10 first stage</i></p>
-    <h2>Live</h2>
+    <p class="when">Mon 14 &ndash; Fri 18 Sep<i>Stages 1&ndash;5, Portugal</i></p>
+    <h2>The coast, and the first fork</h2>
+    <div class="tablewrap"><table class="stages">
+      <tr><td>Mon 14</td><td>Porto &rarr; Vila do Conde</td><td class="km">35 km</td></tr>
+      <tr><td>Tue 15</td><td>Vila do Conde &rarr; Esposende</td><td class="km">24 km</td></tr>
+      <tr><td>Wed 16</td><td>Esposende &rarr; Viana do Castelo</td><td class="km">26 km</td></tr>
+      <tr><td>Thu 17</td><td>Viana &rarr; Caminha</td><td class="km">27 km</td></tr>
+      <tr><td>Fri 18</td><td class="fork">Caminha &rarr; A Guarda by boat, or the river to Valen&ccedil;a</td><td class="km">2 km</td></tr>
+    </table></div>
     <ul class="items">
-      <li><b>Countdown page</b> shows one day, then the first check-in from Porto cathedral turns it into the route.</li>
-      <li><b>First photos land</b> on the line. I watch for anything wrong with location, orientation or the queue during stage one and fix it in the day.</li>
+      <li><b>First check-in from Vila do Conde</b> turns the countdown into the route. I watch stage one for location, orientation and the queue, and fix anything in the day.</li>
+      <li><b>First real 19:00 post</b>: the scheduled function&rsquo;s first run against a live walk. Check both bells rang.</li>
+      <li><b>The Caminha fork</b> reaches their screen on Thursday evening. They choose the boat or the river on the day, and the family&rsquo;s map redraws.</li>
     </ul>
   </div>
 
   <div class="ms">
     <span class="dot next"></span>
-    <p class="when">Thu 10 &ndash; Sun 14 Sep<i>Stages 1&ndash;5, Porto to Caminha</i></p>
-    <h2>Voices</h2>
-    <p>Ships underneath them while they walk; nothing to update on their side.</p>
+    <p class="when">Sat 19 &ndash; Thu 24 Sep<i>Stages 6&ndash;11, Galicia</i></p>
+    <h2>Depth, built underneath them</h2>
     <ul class="items">
-      <li><b>30-second clips and the diary</b> through Cloudflare Stream, cap enforced server-side, poster frames, plays on every phone.<span class="you">needs a Cloudflare account + token</span></li>
-      <li><b>Diary prompts</b> rotating on the walkers&rsquo; screen; diary entries drawn as play rings on the trail.</li>
-      <li><b>Push and the 19:00 bundle.</b> A scheduled function delivers the day&rsquo;s messages to the walkers at once; followers get a push when a stage completes.<span class="you">needs VAPID keys</span></li>
-      <li><b>The Caminha fork</b> surfaces on their screen around stage four. They choose; the family&rsquo;s map redraws.</li>
+      <li><b>The Pontevedra fork</b> on Tuesday 22: straight on through Caldas, or the Espiritual with the boat up the Ulla, which adds a day.</li>
+      <li><b>The arrival screen for Santiago.</b> Not built. It needs to be on their phones and tested by Thursday 24.</li>
+      <li class="done"><b>Crowded markers when zoomed out</b>, which this milestone planned for, already handled by the pile counts.</li>
+      <li class="opt"><b>Elevation profile per stage.</b> The map has terrain shading; the stage card has no profile yet.<span class="opt-tag">optional</span></li>
+      <li class="opt"><b>Transcripts under diaries</b>, for search and the printed record. The field exists and nothing fills it.<span class="opt-tag">optional</span></li>
     </ul>
   </div>
 
   <div class="ms">
     <span class="dot next"></span>
-    <p class="when">Mon 15 &ndash; Sun 21 Sep<i>Stages 6&ndash;11, Galicia</i></p>
-    <h2>Depth</h2>
-    <ul class="items">
-      <li><b>Elevation profile</b> per stage in the stage card.</li>
-      <li><b>Marker clustering</b> when the map is zoomed out; by now it&rsquo;s full.</li>
-      <li><b>The Pontevedra fork</b>: straight on, or the Espiritual with the boat.</li>
-      <li><b>The arrival screen</b> for Santiago, built and tested before they get there.</li>
-      <li class="opt"><b>Transcripts</b> under diaries, making the walk searchable and printable.<span class="opt-tag">optional</span></li>
-    </ul>
-  </div>
-
-  <div class="ms">
-    <span class="dot next"></span>
-    <p class="when">~Tue 22 Sep<i>Praza do Obradoiro</i></p>
+    <p class="when">~Fri 25 Sep<i>Praza do Obradoiro</i></p>
     <h2>Santiago</h2>
     <ul class="items">
-      <li><b>The line completes</b>, the tile arrives at the shell, the page becomes the record: every photo in order, every message with a name and a stage, the total.</li>
+      <li><b>The line completes</b>, the tile arrives at the shell, and the page becomes the record: every photo in order, every message with a name and a stage, the total.</li>
     </ul>
   </div>
 
@@ -211,13 +226,12 @@ footer a{color:var(--ink-2)}
     <span class="dot next"></span>
     <p class="when">October onward<i>After the walk</i></p>
     <h2>Ultreia for other walkers</h2>
-    <p>The house exists; this is the front door. Nothing here changes what Ju and Jit use.</p>
+    <p>The front door is mostly built already. What&rsquo;s left is proving it with someone who isn&rsquo;t family.</p>
     <ul class="items">
-      <li><b>Sign-in</b> by email magic link; a walk belongs to an owner.</li>
-      <li><b>Route picker</b> on the catalogue: choose a Camino, its variants, adjust stages, name the walkers, upload the photo.</li>
-      <li><b>One-off payment per walk</b> through Stripe Checkout; following stays free and account-free.<span class="you">Stripe account, terms &amp; privacy page</span></li>
-      <li><b>Paid map tiles</b> (MapTiler or Mapbox) once it&rsquo;s a product; the free imagery is fine for one family.</li>
-      <li><b>The printed book</b> of Ju and Jit&rsquo;s walk, laid out from the same data.</li>
+      <li class="done"><b>Sign-in, owner accounts, the route picker and Checkout</b> are in the code.</li>
+      <li class="wait"><b>Switched on for strangers</b>: live Stripe key, the webhook registered from <span class="mono">/account</span> (not done yet), a terms page read through.<span class="you">you</span></li>
+      <li><b>Paid map tiles</b> (MapTiler or Mapbox) once it&rsquo;s a product; free imagery is fine for one family.</li>
+      <li><b>The printed book</b> of Ju and Jit&rsquo;s walk, laid out from the same data, scrapbook pictures included if they want them.</li>
     </ul>
   </div>
 
@@ -225,13 +239,15 @@ footer a{color:var(--ink-2)}
 
 <section class="risks">
   <h2 class="display">What could bite, and the answer</h2>
-  <div class="risk"><b>Photo location on iPhone</b><span>iOS sometimes hands the browser a converted copy without GPS. Rehearsal Sunday tests it; the phone&rsquo;s own location is the built-in fallback and the day&rsquo;s check-in the fallback behind that.</span></div>
-  <div class="risk"><b>Signal in Galicia</b><span>Posts queue on the phone and drain when a bar appears; the public page keeps its last state offline. Nothing they do needs a connection at the moment they do it.</span></div>
-  <div class="risk"><b>The Caminha boat</b><span>It runs on tide and weather. That&rsquo;s exactly why the fork is chosen on the day, from their screen, not planned.</span></div>
-  <div class="risk"><b>Video before the cap works</b><span>Clips don&rsquo;t ship until Cloudflare enforces the 30 seconds server-side, so there is no window where a long video can break playback.</span></div>
+  <div class="risk"><b>Photo location on iPhone</b><span>Tested on the day: Ju&rsquo;s first photograph landed at the cathedral. The phone&rsquo;s own location and a hand-placed town are there if a later one comes through without GPS.</span></div>
+  <div class="risk"><b>Signal in Galicia</b><span>Posts queue and drain when a bar appears, and a retry can no longer double one. The family&rsquo;s page keeps its last state offline.</span></div>
+  <div class="risk"><b>The Caminha boat</b><span>It runs on tide and weather, which is why the fork is chosen on Thursday evening, on their screen, not planned.</span></div>
+  <div class="risk"><b>A clip Safari can&rsquo;t read</b><span>It goes up anyway without a poster frame; one over 48&nbsp;MB is refused with a message saying what to do. Nothing is lost silently.</span></div>
+  <div class="risk"><b>Two sessions in one repo</b><span>Twice already two builders changed the same checkout at once: a duplicate demo walk, and a branch switched mid-task. During the walk, one session at a time, and every change through a pull request.</span></div>
+  <div class="risk"><b>Test data on a live walk</b><span>A private test post is on their walk right now. From tomorrow, rehearse on a separate walk, never on theirs.</span></div>
   <div class="risk"><b>Imagery licensing</b><span>Free Esri tiles with attribution are fine for a family page. The moment other walkers pay, tiles move to a keyed provider on a paid plan.</span></div>
-  <div class="risk"><b>Me, mid-walk</b><span>Every drop after the 9th is additive and deploys from <span class="mono">main</span>; if something goes wrong the previous deploy is one click back in Netlify.</span></div>
+  <div class="risk"><b>Me, mid-walk</b><span>Every change deploys from <span class="mono">main</span> and is additive; if one goes wrong, the previous deploy is one click back in Netlify.</span></div>
 </section>
 
-<footer>Code: <a href="https://github.com/tristanbejawn-coder/ultreia">github.com/tristanbejawn-coder/ultreia</a> &middot; Plan: the Ultreia concept &amp; build document &middot; Route data &copy; OpenStreetMap contributors</footer>
+<footer>Live: <a href="https://jujitcamino.netlify.app">jujitcamino.netlify.app</a> &middot; Code: <a href="https://github.com/tristanbejawn-coder/ultreia">github.com/tristanbejawn-coder/ultreia</a> &middot; Route data &copy; OpenStreetMap contributors</footer>
 </div>
