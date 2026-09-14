@@ -8,8 +8,8 @@ import RouteScreen from './RouteScreen'
 import { Bell } from './Pwa'
 import { readExif } from '@/lib/exif'
 import { enqueue, drain, all } from '@/lib/queue'
-import { CLIP_MAX_BYTES, CLIP_SECONDS, readClip, uploadDirect } from '@/lib/clip'
-import { clock, playableEverywhere, startVoice, voiceSupported, VOICE_SECONDS, type Recording, type VoiceSession } from '@/lib/voice'
+import { CLIP_MAX_BYTES, CLIP_SECONDS, DIARY_SECONDS, readClip, uploadDirect } from '@/lib/clip'
+import { clock, playableEverywhere, soundFrom, startVoice, voiceSupported, VOICE_SECONDS, type Recording, type VoiceSession } from '@/lib/voice'
 import type { ClientState } from '@/lib/walk'
 import { fmtDate } from '@/lib/fmt'
 
@@ -57,6 +57,9 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
   const voice = useRef<VoiceSession | null>(null)
   const [secs, setSecs] = useState(0)
   const [said, setSaid] = useState<(Recording & { url: string }) | null>(null)
+  // A diary film the store won't take: offered as its own soundtrack rather
+  // than simply refused.
+  const [bigFilm, setBigFilm] = useState<File | null>(null)
 
   // photo draft
   const [draft, setDraft] = useState<{ url: string; blob: Blob; width: number; height: number; lat: number | null; lng: number | null; km: number | null; kmSource: string; takenAt: string } | null>(null)
@@ -97,19 +100,26 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
   async function pickClip(f: File, kind: 'clip' | 'diary') {
     setRefused(null)
     if (f.size > CLIP_MAX_BYTES) {
-      setRefused(kind === 'diary'
-        ? `That one is ${Math.round(f.size / 1048576)} MB and the store takes ${Math.round(CLIP_MAX_BYTES / 1048576)}. Tap Diary again and choose “Speak it” — a spoken entry is a hundredth of the size.`
-        : `That one is ${Math.round(f.size / 1048576)} MB and the store takes ${Math.round(CLIP_MAX_BYTES / 1048576)}. Record it shorter, or turn the camera down to 1080p in Settings › Camera.`)
+      if (kind === 'diary') {
+        setBigFilm(f)
+        setRefused(`That film is ${Math.round(f.size / 1048576)} MB and the store takes ${Math.round(CLIP_MAX_BYTES / 1048576)}. Keep what you said instead:`)
+      } else {
+        setRefused(`That one is ${Math.round(f.size / 1048576)} MB and the store takes ${Math.round(CLIP_MAX_BYTES / 1048576)}. Record it shorter, or turn the camera down to 1080p in Settings › Camera.`)
+      }
       return
     }
     try {
       const read = await readClip(f)
-      if (read.readable && read.durationS > CLIP_SECONDS + 1) {
+      const cap = kind === 'diary' ? DIARY_SECONDS : CLIP_SECONDS
+      if (read.readable && read.durationS > cap + 1) {
         // Now that a diary can be spoken, the answer to a long one is to say
         // it rather than to go and trim it in Photos.
-        setRefused(kind === 'diary'
-          ? `That runs ${read.durationS} seconds, and video has to stay under ${CLIP_SECONDS} — the store won’t take more. Tap Diary again and choose “Speak it”: a spoken entry can run to eight minutes.`
-          : `${read.durationS} seconds is too long — ${CLIP_SECONDS} is the most. Trim it in Photos and try again.`)
+        if (kind === 'diary') {
+          setBigFilm(f)
+          setRefused(`That runs ${read.durationS} seconds and a film has to stay under ${cap}. Keep what you said instead:`)
+        } else {
+          setRefused(`${read.durationS} seconds is too long — ${CLIP_SECONDS} is the most. Trim it in Photos and try again.`)
+        }
         return
       }
       setClip({ kind, file: f, durationS: read.durationS, width: read.width, height: read.height, poster: read.poster, url: URL.createObjectURL(f) })
@@ -193,6 +203,22 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
     const r = await playableEverywhere(raw).catch(() => raw)
     setSending(null)
     setSaid({ ...r, url: URL.createObjectURL(r.blob) })
+  }
+
+  async function keepTheSound() {
+    const f = bigFilm
+    if (!f) return
+    setSending('Taking the sound out…')
+    try {
+      const r = await soundFrom(f)
+      setBigFilm(null); setRefused(null); setCaption('')
+      setSaid({ ...r, url: URL.createObjectURL(r.blob) })
+      setSending(null)
+      setMode('voice')
+    } catch (e) {
+      setSending(null)
+      setRefused((e as Error).message)
+    }
   }
 
   function dropSpeaking() {
@@ -330,7 +356,17 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
         </button>
       </div>
 
-      {refused && <p className="notice warn dock-note" onClick={() => setRefused(null)}>{refused}</p>}
+      {refused && (
+        <p className="notice warn dock-note" onClick={() => { if (!bigFilm) setRefused(null) }}>
+          {refused}
+          {bigFilm && (
+            <span className="dock-note-acts">
+              <button className="btn small" onClick={keepTheSound} disabled={!!sending}>{sending || 'Post the sound only'}</button>
+              <button className="btn small ghost" onClick={() => { setBigFilm(null); setRefused(null) }} disabled={!!sending}>No, drop it</button>
+            </span>
+          )}
+        </p>
+      )}
 
       {nextFork && forkNear && (
         <button className="dock-fork" onClick={() => setMode('fork')}>
@@ -461,7 +497,7 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
               ? <button className="btn" onClick={speak}>Speak it</button>
               : <p className="hint">This phone won’t record speech in the browser — film it instead.</p>}
             <label className="btn ghost" htmlFor="pick-diary">Record a video</label>
-            <p className="hint">Spoken entries can run to eight minutes. Video has to stay under {CLIP_SECONDS} seconds: the store won’t take more.</p>
+            <p className="hint">Spoken entries can run to eight minutes; film can run to {DIARY_SECONDS} seconds if it fits in {Math.round(CLIP_MAX_BYTES / 1048576)} MB. If it doesn’t, we’ll offer to keep just what you said.</p>
             <button className="btn ghost" onClick={() => setMode('home')}>Cancel</button>
           </div>
         </div>

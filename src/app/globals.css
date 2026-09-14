@@ -182,6 +182,17 @@ button.chip.fact:hover,button.chip.fact:focus-visible{border-color:var(--arrow);
 .lore-card h3{font-family:var(--display);font-stretch:62%;font-weight:900;text-transform:uppercase;font-size:20px;line-height:.95;letter-spacing:.005em;margin:0 0 8px;padding-right:26px;color:#F0B429}
 .lore-card p{margin:0;font-size:13.5px;line-height:1.55;color:#D6DAD5}
 
+/* A day's end: a numbered stone on the line, the way the guides mark them. */
+.mk-day{width:22px;height:22px;padding:0;border-radius:50%;border:2px solid #F0B429;background:rgba(14,20,24,.82);
+  color:#F0B429;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+.mk-day i{font-family:var(--mono);font-style:normal;font-size:10.5px;line-height:1}
+.mk-day:hover,.mk-day:focus-visible{background:#F0B429;color:#1B2430;outline:none}
+/* Where today is meant to end. */
+.mk-finish{display:flex;align-items:center;gap:6px;pointer-events:none}
+.mk-finish i{width:13px;height:13px;flex:none;border-radius:50%;border:2.5px solid #F3F5F2;background:transparent;
+  box-shadow:0 0 0 4px rgba(243,245,242,.16),0 1px 6px rgba(0,0,0,.6)}
+.mk-finish span{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#F3F5F2;
+  white-space:nowrap;text-shadow:0 1px 4px rgba(0,0,0,.9)}
 .mk-checkin{width:10px;height:10px;border-radius:50%;background:#F0B429;box-shadow:0 0 0 3px rgba(14,20,24,.7)}
 .mk-node{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#E4E7E4;text-shadow:0 1px 4px rgba(0,0,0,.9);white-space:nowrap;pointer-events:none}
 
@@ -405,6 +416,8 @@ label.big-btn{cursor:pointer}
 .ways .hint{margin:0;font-size:12.5px;line-height:1.35;color:var(--ink-2)}
 .ways .btn.ghost{padding:10px}
 /* While it is recording: the count, and a light that says it is live. */
+.dock-note-acts{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.dock-note-acts .btn{font-size:11px;padding:8px 12px}
 .rec{display:flex;align-items:center;gap:10px;margin:6px 0 2px}
 .rec b{font-family:var(--display);font-stretch:62%;font-weight:900;font-size:44px;line-height:1}
 .rec-dot{width:12px;height:12px;border-radius:50%;background:#C8453A;animation:rec-pulse 1.6s ease-in-out infinite}

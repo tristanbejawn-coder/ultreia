@@ -161,6 +161,10 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
       }
 
       const occupied: HTMLElement[] = []
+      // Diary entries stand a little above the line, so a day's talking is
+      // never hidden under the walkers' own faces — which is exactly where
+      // the newest one always lands.
+      const diaryEls: HTMLElement[] = []
       const centreOf = (e: HTMLElement, box: DOMRect) => {
         const r = e.getBoundingClientRect()
         return { x: r.x + r.width / 2 - box.x, y: r.y + r.height / 2 - box.y }
@@ -188,9 +192,11 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         }
         if (p.kind !== 'checkin' && p.kind !== 'ping' && onOpenPost) {
           onTap(m, () => onOpenPost(p.id))
-          pictures.push(m)
+          if (p.kind === 'diary') diaryEls.push(m); else pictures.push(m)
         }
-        layer(new maplibregl.Marker({ element: m, anchor: 'center' }).setLngLat(at).addTo(map), p.kind === 'checkin' || p.kind === 'ping' ? 2 : 4)
+        const lift: [number, number] = p.kind === 'diary' ? [0, -32] : [0, 0]
+        layer(new maplibregl.Marker({ element: m, anchor: 'center', offset: lift }).setLngLat(at).addTo(map),
+              p.kind === 'checkin' || p.kind === 'ping' ? 2 : p.kind === 'diary' ? 5 : 4)
         occupied.push(m)
       }
 
@@ -230,6 +236,16 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
           if (!standing.length) { continue }   // nothing better to give it to
           u.el.style.display = 'none'
           standing.reduce((a, b) => Math.hypot(a.x - u.x, a.y - u.y) <= Math.hypot(b.x - u.x, b.y - u.y) ? a : b).n++
+        }
+
+        // Diaries: always up, and only ever hidden by another diary.
+        const spoken: { x: number; y: number }[] = []
+        for (const el of diaryEls) {
+          el.style.display = ''
+          const c = centreOf(el, box)
+          const over = spoken.find(t => Math.hypot(t.x - c.x, t.y - c.y) < 26)
+          if (over) el.style.display = 'none'
+          else spoken.push(c)
         }
 
         for (const s of standing) {
@@ -350,7 +366,7 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
       map.on('click', e => {
         // A tap that landed on a photograph belongs to the photograph.
         const t = e.originalEvent?.target as HTMLElement | null
-        if (t && typeof t.closest === 'function' && t.closest('.mk-photo,.mk-diary,.mk-them')) return
+        if (t && typeof t.closest === 'function' && t.closest('.mk-photo,.mk-diary,.mk-them,.mk-day')) return
         const f = nearestLore(e.point)
         if (f) openLore(f)
         else if (pop.isOpen()) pop.remove()
@@ -361,6 +377,73 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         for (const o of loreMarks) o.el.classList.toggle('near', o === f)
       })
       map.on('move', placeSoon); map.on('zoom', placeSoon); map.on('idle', placeSoon); placeMarks()
+
+      // Where each day ended. The walk reads as days, not as one long line:
+      // a numbered stone at the furthest point of every finished day says how
+      // far that day went, and the ring ahead is where today is meant to end.
+      const tz = state.walk.timezone
+      const dayOf = (iso: string) =>
+        new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso))
+      const today = dayOf(new Date().toISOString())
+      const furthestBy = new Map<string, number>()
+      for (const p of state.posts) {
+        if (p.km == null) continue
+        const d = dayOf(p.takenAt)
+        furthestBy.set(d, Math.max(furthestBy.get(d) ?? 0, p.km))
+      }
+      // Which town a kilometre is at, or between.
+      const placeAtKm = (km: number) => {
+        const seg = state.route.segments.find(x => km >= x.km - 0.05 && km <= x.endKm + 0.05)
+        if (!seg) return ''
+        if (km >= seg.endKm - 1.2) return seg.to
+        if (km <= seg.km + 1.2) return seg.from
+        return `${seg.from} → ${seg.to}`
+      }
+      const dayCards: { el: HTMLElement; at: [number, number]; title: string; text: string }[] = []
+      const finishedDays = [...furthestBy.entries()].filter(([d]) => d < today).sort((a, b) => (a[0] < b[0] ? -1 : 1))
+      finishedDays.forEach(([date, km], i) => {
+        const at = pointAt(pts, km)
+        const el = document.createElement('button')
+        el.className = 'mk-day'
+        el.type = 'button'
+        el.innerHTML = `<i>${i + 1}</i>`
+        const before = i > 0 ? finishedDays[i - 1][1] : 0
+        const title = `Day ${i + 1} ended here`
+        const text = `${placeAtKm(km)} · km ${km.toFixed(0)} · ${(km - before).toFixed(0)} km that day`
+        el.title = `${title} — ${text}`
+        el.setAttribute('aria-label', `${title}, ${text}`)
+        layer(new maplibregl.Marker({ element: el, anchor: 'center', offset: [0, 0] }).setLngLat(at).addTo(map), 3)
+        occupied.push(el)
+        dayCards.push({ el, at, title, text })
+        void date
+      })
+
+      for (const d of dayCards) {
+        onTap(d.el, () => {
+          const card = document.createElement('div')
+          card.className = 'lore-card'
+          const h = document.createElement('h3'); h.textContent = d.title
+          const t = document.createElement('p'); t.textContent = d.text
+          card.append(h, t)
+          const y = centreOf(d.el, map.getContainer().getBoundingClientRect()).y
+          pop.options.anchor = y < map.getContainer().clientHeight * 0.45 ? 'top' : 'bottom'
+          pop.setLngLat(d.at).setDOMContent(card).addTo(map)
+        })
+      }
+
+      // Today's finish: the end of the stage they are walking now.
+      const legToday = state.position.segment
+        ? state.route.segments.find(x => x.id === state.position.segment!.id)
+        : null
+      if (legToday && !state.finished && state.started) {
+        const at = pointAt(pts, legToday.endKm)
+        const el = document.createElement('div')
+        el.className = 'mk-finish'
+        el.innerHTML = '<i></i><span>' + legToday.to + '</span>'
+        el.title = `Today's finish · ${legToday.to} · km ${legToday.endKm.toFixed(0)}`
+        layer(new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(at).addTo(map), 3)
+        occupied.push(el)
+      }
 
       // The figures
       const f = document.createElement('div')

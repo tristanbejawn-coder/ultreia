@@ -11,6 +11,9 @@
 // shame, not a reason to lose a diary entry.
 
 export const CLIP_SECONDS = 30
+// A spoken thought needs longer than a view of the sea does. Whether a
+// minute of film fits is a question of bytes, not of seconds: see below.
+export const DIARY_SECONDS = 60
 // Storage refuses anything over its per-file ceiling (50 MB by default), and
 // thirty seconds from a modern phone can run past it. Say so before trying.
 export const CLIP_MAX_BYTES = 48 * 1024 * 1024

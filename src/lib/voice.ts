@@ -118,23 +118,42 @@ export async function playableEverywhere(rec: Recording): Promise<Recording> {
   const ctx = new Ctx()
   try {
     const decoded = await ctx.decodeAudioData(bytes.slice(0))
-    let mono: Float32Array, rate = decoded.sampleRate
-    try {
-      const offline = new OfflineAudioContext(1, Math.max(1, Math.ceil(decoded.duration * WAV_RATE)), WAV_RATE)
-      const src = offline.createBufferSource()
-      src.buffer = decoded; src.connect(offline.destination); src.start()
-      const out = await offline.startRendering()
-      mono = out.getChannelData(0); rate = WAV_RATE
-    } catch {
-      // A phone that will not resample: keep its own rate, bigger but sound.
-      mono = decoded.getChannelData(0)
-    }
-    return { blob: wavOf(mono, rate), mime: 'audio/wav', durationS: Math.round(decoded.duration) || rec.durationS }
+    return await pcmOf(decoded, rec.durationS)
   } catch {
     return rec          // undecodable: store what we have rather than lose it
   } finally {
     ctx.close().catch(() => {})
   }
+}
+
+// The sound of a film, as a spoken entry. A minute of video from a phone is
+// far more than the store will take, but the voice on it is a megabyte or
+// two — so a diary that is too big to keep as film can still be kept.
+export async function soundFrom(file: Blob): Promise<Recording> {
+  const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+  if (!Ctx) throw new Error('This phone can’t take the sound out on its own.')
+  const ctx = new Ctx()
+  try {
+    const decoded = await ctx.decodeAudioData(await file.arrayBuffer())
+    return await pcmOf(decoded, Math.round(decoded.duration))
+  } finally {
+    ctx.close().catch(() => {})
+  }
+}
+
+// Shared by a recording that needs converting and by a film's soundtrack.
+async function pcmOf(decoded: AudioBuffer, durationS: number): Promise<Recording> {
+  let mono: Float32Array, rate = decoded.sampleRate
+  try {
+    const offline = new OfflineAudioContext(1, Math.max(1, Math.ceil(decoded.duration * WAV_RATE)), WAV_RATE)
+    const src = offline.createBufferSource()
+    src.buffer = decoded; src.connect(offline.destination); src.start()
+    const out = await offline.startRendering()
+    mono = out.getChannelData(0); rate = WAV_RATE
+  } catch {
+    mono = decoded.getChannelData(0)
+  }
+  return { blob: wavOf(mono, rate), mime: 'audio/wav', durationS: Math.round(decoded.duration) || durationS }
 }
 
 // mm:ss, for the timer while it runs and the length afterwards.
