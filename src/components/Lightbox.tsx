@@ -4,6 +4,7 @@ import type { ClientState } from '@/lib/walk'
 import { getName, setName } from '@/lib/me'
 import { fmtDate, fmtTime } from '@/lib/fmt'
 import { kmLabel } from './PicturesScreen'
+import { clock, isVoice } from '@/lib/voice'
 
 const EMOJI = ['❤️', '👏', '🥾', '🐚', '😂', '😮']
 
@@ -118,7 +119,17 @@ export default function Lightbox({ state, id, onClose, onSetPrivate }: {
       <div className="lb-media" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}
            onClick={e => { if (e.target === e.currentTarget && !swiped.current) onClose() }}>
         {post.kind === 'photo' && post.mediaUrl && <img src={post.mediaUrl} alt={post.caption || ''} />}
-        {(post.kind === 'clip' || post.kind === 'diary') && post.mediaUrl && <video src={post.mediaUrl} poster={post.posterUrl || undefined} controls playsInline autoPlay />}
+        {/* A spoken entry has nothing to look at, so it gets a face of its
+            own rather than a video element showing black. */}
+        {(post.kind === 'clip' || post.kind === 'diary') && post.mediaUrl && isVoice(post.mediaUrl) && (
+          <div className="lb-voice">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 0 0 3.5-3.5V7a3.5 3.5 0 0 0-7 0v5a3.5 3.5 0 0 0 3.5 3.5Z" /><path d="M6 12a6 6 0 0 0 12 0M12 18.5V21" /></svg>
+            <b>{walker}, out loud</b>
+            {post.durationS ? <span className="label">{clock(post.durationS)}</span> : null}
+            <audio src={post.mediaUrl} controls autoPlay />
+          </div>
+        )}
+        {(post.kind === 'clip' || post.kind === 'diary') && post.mediaUrl && !isVoice(post.mediaUrl) && <video src={post.mediaUrl} poster={post.posterUrl || undefined} controls playsInline autoPlay />}
         {idx > 0 && (
           <button className="lb-nav prev" onClick={() => go(-1)} aria-label="Previous picture">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M15 5l-7 7 7 7" /></svg>

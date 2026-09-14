@@ -250,6 +250,14 @@ button.chip.fact:hover,button.chip.fact:focus-visible{border-color:var(--arrow);
 .lb-nav svg{width:22px;height:22px}
 .lb-nav.prev{left:6px}
 .lb-nav.next{right:6px}
+/* A spoken diary entry, played where a photograph would be. */
+.lb-voice{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;text-align:center}
+.lb-voice svg{width:54px;height:54px;color:var(--arrow);opacity:.9}
+.lb-voice b{font-family:var(--display);font-stretch:62%;font-weight:900;text-transform:uppercase;font-size:26px;line-height:1}
+.lb-voice audio{width:min(420px,86vw);margin-top:6px}
+.tile-voice{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:var(--sunk)}
+.tile-voice svg{width:30px;height:30px;color:var(--arrow)}
+.tile-voice b{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--ink-2)}
 .lb-cap{padding:14px 18px calc(18px + var(--safe-b))}
 .lb-cap p{margin:0 0 10px;font-size:16px}
 .lb-cap .meta{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#9BA5AD}
@@ -396,6 +404,12 @@ label.big-btn{cursor:pointer}
 .ways .btn{width:100%;padding:14px}
 .ways .hint{margin:0;font-size:12.5px;line-height:1.35;color:var(--ink-2)}
 .ways .btn.ghost{padding:10px}
+/* While it is recording: the count, and a light that says it is live. */
+.rec{display:flex;align-items:center;gap:10px;margin:6px 0 2px}
+.rec b{font-family:var(--display);font-stretch:62%;font-weight:900;font-size:44px;line-height:1}
+.rec-dot{width:12px;height:12px;border-radius:50%;background:#C8453A;animation:rec-pulse 1.6s ease-in-out infinite}
+@keyframes rec-pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.pv-audio{width:100%;margin:6px 0 4px}
 .btn.keep{background:var(--azul);color:#fff}
 .btn.keep:hover{filter:brightness(1.06)}
 .sheet .row{display:flex;gap:8px;margin-top:12px}

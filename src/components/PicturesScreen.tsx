@@ -3,6 +3,7 @@ import { useState } from 'react'
 import Lightbox from './Lightbox'
 import type { ClientState } from '@/lib/walk'
 import { fmtTime } from '@/lib/fmt'
+import { clock, isVoice } from '@/lib/voice'
 
 export default function PicturesScreen({ state }: { state: ClientState }) {
   const [open, setOpen] = useState<string | null>(null)
@@ -56,7 +57,13 @@ function Tile({ p, who, tz, onOpen }: { p: ClientState['posts'][number]; who: st
   return (
     <a className="tile" href="#" onClick={e => { e.preventDefault(); onOpen() }}>
       {p.kind === 'photo' && p.mediaUrl && <img src={p.mediaUrl} alt={p.caption || ''} loading="lazy" width={p.width || undefined} height={p.height || undefined} />}
-      {(p.kind === 'clip' || p.kind === 'diary') && <video src={p.mediaUrl || undefined} poster={p.posterUrl || undefined} muted playsInline preload="metadata" />}
+      {(p.kind === 'clip' || p.kind === 'diary') && isVoice(p.mediaUrl) && (
+        <span className="tile-voice">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 0 0 3.5-3.5V7a3.5 3.5 0 0 0-7 0v5a3.5 3.5 0 0 0 3.5 3.5Z" /><path d="M6 12a6 6 0 0 0 12 0M12 18.5V21" /></svg>
+          <b>{p.durationS ? clock(p.durationS) : 'Spoken'}</b>
+        </span>
+      )}
+      {(p.kind === 'clip' || p.kind === 'diary') && !isVoice(p.mediaUrl) && <video src={p.mediaUrl || undefined} poster={p.posterUrl || undefined} muted playsInline preload="metadata" />}
       {count > 0 && <span className="react">{count}</span>}
       {p.private && <span className="react keep">just for us</span>}
       <div className="cap">

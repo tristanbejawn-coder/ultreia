@@ -9,6 +9,7 @@ import { Bell } from './Pwa'
 import { readExif } from '@/lib/exif'
 import { enqueue, drain, all } from '@/lib/queue'
 import { CLIP_MAX_BYTES, CLIP_SECONDS, readClip, uploadDirect } from '@/lib/clip'
+import { clock, startVoice, voiceSupported, VOICE_SECONDS, type Recording, type VoiceSession } from '@/lib/voice'
 import type { ClientState } from '@/lib/walk'
 import { fmtDate } from '@/lib/fmt'
 
@@ -37,7 +38,7 @@ type MapCfg = { tileUrl: string; attribution: string; terrainUrl?: string | null
 export default function GoScreen({ token, map, vapid }: { token: string; map: MapCfg; vapid: string | null }) {
   const [me, setMe] = useState<Me | null>(null)
   const [err, setErr] = useState<string | null>(null)
-  const [mode, setMode] = useState<'home' | 'photo' | 'clip' | 'diary' | 'checkin' | 'fork' | 'post' | 'how-photo' | 'how-clip'>('home')
+  const [mode, setMode] = useState<'home' | 'photo' | 'clip' | 'diary' | 'checkin' | 'fork' | 'post' | 'how-photo' | 'how-clip' | 'how-diary' | 'voice'>('home')
   const [queued, setQueued] = useState(0)
   // A post the server refuses outright used to disappear without a word.
   const [refused, setRefused] = useState<string | null>(null)
@@ -50,6 +51,12 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
   // queue, and far too big for our own API, so it goes straight to storage.
   const [clip, setClip] = useState<{ kind: 'clip' | 'diary'; file: File; durationS: number; width: number; height: number; poster: Blob | null; url: string } | null>(null)
   const [sending, setSending] = useState<string | null>(null)
+  // A spoken diary entry, recorded here rather than fetched from the camera
+  // roll: minutes of speech are a few megabytes, where a minute of video is
+  // more than the store will take.
+  const voice = useRef<VoiceSession | null>(null)
+  const [secs, setSecs] = useState(0)
+  const [said, setSaid] = useState<(Recording & { url: string }) | null>(null)
 
   // photo draft
   const [draft, setDraft] = useState<{ url: string; blob: Blob; width: number; height: number; lat: number | null; lng: number | null; km: number | null; kmSource: string; takenAt: string } | null>(null)
@@ -151,6 +158,57 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
     await load()
   }
 
+  async function speak() {
+    setRefused(null)
+    setSaid(null); setSecs(0); setCaption('')
+    try {
+      voice.current = await startVoice(s => {
+        setSecs(s)
+        if (s >= VOICE_SECONDS) stopSpeaking()
+      })
+      setMode('voice')
+    } catch (e) {
+      setRefused((e as Error).message)
+      setMode('home')
+    }
+  }
+
+  async function stopSpeaking() {
+    const v = voice.current
+    if (!v) return
+    voice.current = null
+    const r = await v.stop()
+    setSaid({ ...r, url: URL.createObjectURL(r.blob) })
+  }
+
+  function dropSpeaking() {
+    voice.current?.cancel(); voice.current = null
+    setSaid(null); setSecs(0); setMode('home')
+  }
+
+  async function postVoice(keep = false) {
+    if (!said) return
+    setSending('Sending…')
+    try {
+      const mediaPath = await uploadDirect(token, said.blob, said.mime)
+      const h = await here()
+      const fd = new FormData()
+      fd.append('postId', crypto.randomUUID())
+      fd.append('kind', 'diary')
+      fd.append('caption', caption)
+      fd.append('mediaPath', mediaPath)
+      fd.append('durationS', String(said.durationS))
+      if (keep) fd.append('private', '1')
+      if (h) { fd.append('lat', String(h.lat)); fd.append('lng', String(h.lng)); fd.append('kmSource', 'device') }
+      const res = await fetch(`/api/go/${token}/post`, { method: 'POST', body: fd })
+      if (!res.ok && res.status !== 409) throw new Error('The last step didn’t go through. Try again when there’s more signal.')
+      setSaid(null); setSecs(0); setSending(null); setMode('home'); load()
+    } catch (e) {
+      setSending(null)
+      setRefused((e as Error).message)
+    }
+  }
+
   const [pinging, setPinging] = useState(false)
   async function whereWeAre() {
     setPinging(true)
@@ -235,10 +293,10 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="6" width="13" height="12" rx="2.5" /><path d="M16 10.5l5-3v9l-5-3" /></svg>
           <b>Clip</b>
         </button>
-        <label className="dock-btn" htmlFor="pick-diary">
+        <button className="dock-btn" onClick={() => setMode('how-diary')}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15.5a3.5 3.5 0 0 0 3.5-3.5V7a3.5 3.5 0 0 0-7 0v5a3.5 3.5 0 0 0 3.5 3.5Z" /><path d="M6 12a6 6 0 0 0 12 0M12 18.5V21" /></svg>
           <b>Diary</b>
-        </label>
+        </button>
         {state.started && !state.finished && (
           <button className="dock-btn" onClick={whereWeAre} disabled={pinging}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="2.6" /><circle cx="12" cy="12" r="7.4" /><path d="M12 2.2v2.4M12 19.4v2.4M2.2 12h2.4M19.4 12h2.4" /></svg>
@@ -282,7 +340,7 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
                    base="" publicUrl={publicUrl} actions={walkerActions} onSetPrivate={setPostPrivate} />
 
       {mode !== 'home' && (
-        <div className="go-veil" onClick={() => { setMode('home'); setDraft(null); setPlacing(false) }}>
+        <div className="go-veil" onClick={() => { if (voice.current) return; setMode('home'); setDraft(null); setPlacing(false) }}>
           <div className="go-panel" onClick={e => e.stopPropagation()}>
       {mode === 'photo' && draft && (
         <div className="sheet">
@@ -377,6 +435,55 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
             </label>
             <button className="btn ghost" onClick={() => setMode('home')}>Cancel</button>
           </div>
+        </div>
+      )}
+
+      {mode === 'how-diary' && (
+        <div className="sheet">
+          <h2>A diary entry</h2>
+          <p className="label">Speak it for as long as you like, or film a short one</p>
+          <div className="ways">
+            {voiceSupported()
+              ? <button className="btn" onClick={speak}>Speak it</button>
+              : <p className="hint">This phone won’t record speech in the browser — film it instead.</p>}
+            <label className="btn ghost" htmlFor="pick-diary">Record a video</label>
+            <p className="hint">Spoken entries can run to ten minutes. Video has to stay under {CLIP_SECONDS} seconds: the store won’t take more.</p>
+            <button className="btn ghost" onClick={() => setMode('home')}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {mode === 'voice' && (
+        <div className="sheet">
+          <h2>{said ? 'Your diary entry' : 'Recording'}</h2>
+          {!said ? (
+            <>
+              <div className="rec">
+                <span className="rec-dot" aria-hidden="true" />
+                <b className="tnum">{clock(secs)}</b>
+                <span className="label">of {clock(VOICE_SECONDS)}</span>
+              </div>
+              <p className="hint">Hold the phone up and talk. It keeps going while the screen is on.</p>
+              <div className="ways">
+                <button className="btn" onClick={stopSpeaking}>Stop</button>
+                <button className="btn ghost" onClick={dropSpeaking}>Throw it away</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <audio className="pv-audio" src={said.url} controls />
+              <p className="label">{clock(said.durationS)} · goes up now, so it needs a bar of signal</p>
+              <label>A line for it</label>
+              <textarea value={caption} onChange={e => setCaption(e.target.value)} maxLength={600}
+                        placeholder="Day one, and the feet have opinions…" rows={2} />
+              <div className="ways">
+                <button className="btn" onClick={() => postVoice(false)} disabled={!!sending}>{sending || 'Post for everyone'}</button>
+                <button className="btn keep" onClick={() => postVoice(true)} disabled={!!sending}>{sending ? 'Sending…' : 'Keep it just for us'}</button>
+                <button className="btn ghost" onClick={speak} disabled={!!sending}>Record it again</button>
+                <button className="btn ghost" onClick={dropSpeaking} disabled={!!sending}>Throw it away</button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
