@@ -31,11 +31,27 @@ export function filmSupported(): boolean {
   return typeof window !== 'undefined' && !!navigator.mediaDevices?.getUserMedia && !!filmMime()
 }
 
-// H.264 and AAC, named in the file's own header. A build that offers MP4 but
-// writes Opus or VP8 inside it is caught here rather than at the family's end.
+// H.264, named in the file's own boxes. A build that offers MP4 but writes
+// VP9 or Opus inside it — this is real, and Chromium without the proprietary
+// codecs does exactly that — is caught here rather than at the family's end.
+//
+// Where the codec is named depends on who wrote the file: a recorder puts the
+// moov box at the front, while a phone's camera app usually leaves it at the
+// very end, after the picture. Both ends are read, so a good file is never
+// turned away for being written the ordinary way round.
+const HEAD = 96 * 1024, TAIL = 256 * 1024
+async function boxes(blob: Blob): Promise<string> {
+  const dec = new TextDecoder('latin1')
+  const head = dec.decode(await blob.slice(0, Math.min(blob.size, HEAD)).arrayBuffer())
+  if (blob.size <= HEAD) return head
+  return head + dec.decode(await blob.slice(Math.max(HEAD, blob.size - TAIL)).arrayBuffer())
+}
+
 export async function playsAnywhere(blob: Blob): Promise<boolean> {
-  const head = String.fromCharCode(...new Uint8Array(await blob.slice(0, 8192).arrayBuffer()))
-  return head.includes('ftyp') && head.includes('avc1') && !head.includes('Opus') && !head.includes('VP8')
+  const text = await boxes(blob)
+  if (!text.includes('ftyp')) return false
+  if (/OpusHead|Opus|vp09|vp08|VP8|VP9/.test(text)) return false
+  return text.includes('avc1')
 }
 
 export type Film = { blob: Blob; mime: string; durationS: number; width: number; height: number; poster: Blob | null }
