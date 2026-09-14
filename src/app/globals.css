@@ -221,16 +221,28 @@ button.chip.fact:hover,button.chip.fact:focus-visible{border-color:var(--arrow);
 
 /* lightbox */
 .lb{position:fixed;inset:0;z-index:50;background:rgba(14,20,24,.96);display:grid;grid-template-rows:auto 1fr auto;color:#E4E7E4}
-.lb-top{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px}
+/* Installed to the home screen, this runs under the status bar: the clock and
+   the battery sat on top of the close button and iOS took the tap, so the
+   picture could not be shut at all. */
+.lb-top{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:calc(14px + var(--safe-t)) 16px 14px}
 /* Two lines rather than one line under the close button: with the tag on it,
    walker · stage · km is more than a phone's width. */
 .lb-top .label{min-width:0;flex:1;line-height:1.5}
 .lb-top>button{flex:none;white-space:nowrap}
 .lb-top button{background:none;border:0;color:#E4E7E4;font-family:var(--mono);font-size:12px;letter-spacing:.1em;cursor:pointer;padding:6px}
+/* A disc, with a thumb's worth of target around it. */
+.lb-close{width:44px;height:44px;flex:none;border-radius:50%;display:grid;place-items:center;padding:0;
+  background:rgba(27,36,48,.72);border:1px solid rgba(255,255,255,.18)}
+.lb-close svg{width:20px;height:20px}
+.lb-close:active{background:rgba(27,36,48,.95)}
 .lb-media{display:grid;place-items:center;min-height:0;padding:0 8px}
 /* Sized to its cell rather than to itself: a tall photograph used to spill
    twenty pixels over its own caption. */
 .lb-media img,.lb-media video{width:100%;height:100%;max-height:100%;max-width:100%;object-fit:contain}
+/* The photograph itself takes no taps, so a tap anywhere around or on it
+   reaches the ground beneath and closes the picture. A video keeps its own
+   taps: its controls are there to be pressed. */
+.lb-media img{pointer-events:none}
 .lb-media{position:relative}
 .lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:0;
   background:rgba(27,36,48,.55);color:#E4E7E4;display:grid;place-items:center;cursor:pointer;padding:0}

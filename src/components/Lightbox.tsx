@@ -43,6 +43,21 @@ export default function Lightbox({ state, id, onClose, onSetPrivate }: {
   }, [cur, media, state.posts])
 
   useEffect(() => { document.body.style.overflow = 'hidden'; return () => { document.body.style.overflow = '' } }, [])
+  // Installed to the home screen there is no browser chrome to press, so the
+  // picture takes a history entry of its own: Android's back gesture closes
+  // it instead of closing the whole app.
+  const closeRef = useRef(onClose)
+  useEffect(() => { closeRef.current = onClose }, [onClose])
+  useEffect(() => {
+    window.history.pushState({ lb: true }, '')
+    const pop = () => closeRef.current()
+    window.addEventListener('popstate', pop)
+    return () => {
+      window.removeEventListener('popstate', pop)
+      // If it was closed by a button rather than by going back, drop the entry.
+      if ((window.history.state as { lb?: boolean } | null)?.lb) window.history.back()
+    }
+  }, [])
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -54,12 +69,16 @@ export default function Lightbox({ state, id, onClose, onSetPrivate }: {
 
   // Swipe, because on a phone this is the only way through the pile.
   const touch = useRef<{ x: number; y: number } | null>(null)
+  const swiped = useRef(false)
   const onTouchStart = (e: React.TouchEvent) => { touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY } }
   const onTouchEnd = (e: React.TouchEvent) => {
     const s = touch.current; touch.current = null
     if (!s) return
     const dx = e.changedTouches[0].clientX - s.x, dy = e.changedTouches[0].clientY - s.y
-    if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) go(dx < 0 ? 1 : -1)
+    if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) { swiped.current = true; go(dx < 0 ? 1 : -1) }
+    else if (dy > 90 && Math.abs(dy) > Math.abs(dx)) onClose()   // flick it away
+    else swiped.current = false
+    if (swiped.current) setTimeout(() => { swiped.current = false }, 400)
   }
 
   if (!post) return null
@@ -90,9 +109,14 @@ export default function Lightbox({ state, id, onClose, onSetPrivate }: {
           {post.private && <b className="keep-tag">Just for us</b>}
           {walker} · {seg ? `${seg.from} → ${seg.to}` : ''}{post.km != null ? ` · ${kmLabel(post.km)}` : ''}
         </span>
-        <button onClick={onClose} aria-label="Close">CLOSE ✕</button>
+        <button className="lb-close" onClick={onClose} aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
       </div>
-      <div className="lb-media" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      {/* Anywhere off the picture closes it: on a phone the corner button is
+          a small target and the way out has to be obvious. */}
+      <div className="lb-media" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}
+           onClick={e => { if (e.target === e.currentTarget && !swiped.current) onClose() }}>
         {post.kind === 'photo' && post.mediaUrl && <img src={post.mediaUrl} alt={post.caption || ''} />}
         {(post.kind === 'clip' || post.kind === 'diary') && post.mediaUrl && <video src={post.mediaUrl} poster={post.posterUrl || undefined} controls playsInline autoPlay />}
         {idx > 0 && (
