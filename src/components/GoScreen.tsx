@@ -9,7 +9,7 @@ import { Bell } from './Pwa'
 import { readExif } from '@/lib/exif'
 import { enqueue, drain, all } from '@/lib/queue'
 import { CLIP_MAX_BYTES, CLIP_SECONDS, readClip, uploadDirect } from '@/lib/clip'
-import { clock, startVoice, voiceSupported, VOICE_SECONDS, type Recording, type VoiceSession } from '@/lib/voice'
+import { clock, playableEverywhere, startVoice, voiceSupported, VOICE_SECONDS, type Recording, type VoiceSession } from '@/lib/voice'
 import type { ClientState } from '@/lib/walk'
 import { fmtDate } from '@/lib/fmt'
 
@@ -177,7 +177,12 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
     const v = voice.current
     if (!v) return
     voice.current = null
-    const r = await v.stop()
+    setSending('Getting it ready…')
+    const raw = await v.stop()
+    // Some phones record in a format others cannot play; this hands back one
+    // that every phone at home can.
+    const r = await playableEverywhere(raw).catch(() => raw)
+    setSending(null)
     setSaid({ ...r, url: URL.createObjectURL(r.blob) })
   }
 
@@ -447,7 +452,7 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
               ? <button className="btn" onClick={speak}>Speak it</button>
               : <p className="hint">This phone won’t record speech in the browser — film it instead.</p>}
             <label className="btn ghost" htmlFor="pick-diary">Record a video</label>
-            <p className="hint">Spoken entries can run to ten minutes. Video has to stay under {CLIP_SECONDS} seconds: the store won’t take more.</p>
+            <p className="hint">Spoken entries can run to eight minutes. Video has to stay under {CLIP_SECONDS} seconds: the store won’t take more.</p>
             <button className="btn ghost" onClick={() => setMode('home')}>Cancel</button>
           </div>
         </div>
@@ -465,8 +470,8 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
               </div>
               <p className="hint">Hold the phone up and talk. It keeps going while the screen is on.</p>
               <div className="ways">
-                <button className="btn" onClick={stopSpeaking}>Stop</button>
-                <button className="btn ghost" onClick={dropSpeaking}>Throw it away</button>
+                <button className="btn" onClick={stopSpeaking} disabled={!!sending}>{sending || 'Stop'}</button>
+                <button className="btn ghost" onClick={dropSpeaking} disabled={!!sending}>Throw it away</button>
               </div>
             </>
           ) : (

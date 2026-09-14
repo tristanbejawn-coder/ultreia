@@ -9,7 +9,7 @@ const EXT: Record<string, string> = {
   'image/jpeg': 'jpg', 'image/png': 'png',
   // Spoken diary entries. Safari records audio/mp4, Chrome webm/opus.
   'audio/mp4': 'm4a', 'audio/aac': 'm4a', 'audio/x-m4a': 'm4a',
-  'audio/webm': 'weba', 'audio/ogg': 'ogg', 'audio/mpeg': 'mp3',
+  'audio/webm': 'weba', 'audio/ogg': 'ogg', 'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/x-wav': 'wav',
 }
 
 // A walker asks for somewhere to put a clip; they upload to it themselves.
