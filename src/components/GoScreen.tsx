@@ -10,6 +10,7 @@ import { readExif } from '@/lib/exif'
 import { enqueue, drain, all } from '@/lib/queue'
 import { CLIP_MAX_BYTES, CLIP_SECONDS, DIARY_SECONDS, readClip, uploadDirect } from '@/lib/clip'
 import { clock, playableEverywhere, soundFrom, startVoice, voiceSupported, VOICE_SECONDS, type Recording, type VoiceSession } from '@/lib/voice'
+import { FILM_CAP, filmSupported, mb, playsAnywhere, startFilm, type FilmSession } from '@/lib/film'
 import type { ClientState } from '@/lib/walk'
 import { fmtDate } from '@/lib/fmt'
 
@@ -38,7 +39,7 @@ type MapCfg = { tileUrl: string; attribution: string; terrainUrl?: string | null
 export default function GoScreen({ token, map, vapid }: { token: string; map: MapCfg; vapid: string | null }) {
   const [me, setMe] = useState<Me | null>(null)
   const [err, setErr] = useState<string | null>(null)
-  const [mode, setMode] = useState<'home' | 'photo' | 'clip' | 'diary' | 'checkin' | 'fork' | 'post' | 'how-photo' | 'how-clip' | 'how-diary' | 'voice'>('home')
+  const [mode, setMode] = useState<'home' | 'photo' | 'clip' | 'diary' | 'checkin' | 'fork' | 'post' | 'how-photo' | 'how-clip' | 'how-diary' | 'voice' | 'film'>('home')
   const [queued, setQueued] = useState(0)
   // A post the server refuses outright used to disappear without a word.
   const [refused, setRefused] = useState<string | null>(null)
@@ -49,7 +50,7 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
   const diaryRef = useRef<HTMLInputElement>(null)
   // A clip is uploaded as it is chosen: it is far too big to sit in the
   // queue, and far too big for our own API, so it goes straight to storage.
-  const [clip, setClip] = useState<{ kind: 'clip' | 'diary'; file: File; durationS: number; width: number; height: number; poster: Blob | null; url: string } | null>(null)
+  const [clip, setClip] = useState<{ kind: 'clip' | 'diary'; file: Blob; durationS: number; width: number; height: number; poster: Blob | null; url: string } | null>(null)
   const [sending, setSending] = useState<string | null>(null)
   // A spoken diary entry, recorded here rather than fetched from the camera
   // roll: minutes of speech are a few megabytes, where a minute of video is
@@ -60,6 +61,15 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
   // A diary film the store won't take: offered as its own soundtrack rather
   // than simply refused.
   const [bigFilm, setBigFilm] = useState<File | null>(null)
+  // Filming here rather than in the camera app: 720p at 2 Mbit, so a minute
+  // is about 15 MB instead of 100.
+  const film = useRef<FilmSession | null>(null)
+  // What is being filmed, held in a ref as well as in state: the recorder's
+  // own timer calls back into the first render's closure, where the state
+  // would still read null, and a diary would be filed as a clip.
+  const filmKind = useRef<'clip' | 'diary'>('clip')
+  const preview = useRef<HTMLVideoElement | null>(null)
+  const [rolling, setRolling] = useState<{ kind: 'clip' | 'diary'; seconds: number; bytes: number; facing: 'environment' | 'user' } | null>(null)
 
   // photo draft
   const [draft, setDraft] = useState<{ url: string; blob: Blob; width: number; height: number; lat: number | null; lng: number | null; km: number | null; kmSource: string; takenAt: string } | null>(null)
@@ -68,6 +78,16 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
   // day off — once the walker has said so. It goes in the album, not on the map.
   const [noPlace, setNoPlace] = useState(false)
   const [caption, setCaption] = useState('')
+
+  // The preview element only exists once the panel has painted.
+  useEffect(() => {
+    if (!rolling || !preview.current || !film.current) return
+    preview.current.srcObject = film.current.stream
+    preview.current.play().catch(() => {})
+  }, [rolling])
+
+  // Leaving the screen must not leave the camera or the microphone on.
+  useEffect(() => () => { film.current?.cancel(); voice.current?.cancel() }, [])
 
   const load = useCallback(async () => {
     try {
@@ -175,6 +195,55 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
     }).catch(() => null)
     if (!r || !r.ok) throw new Error('That didn’t change. Try again when there’s signal.')
     await load()
+  }
+
+  async function startFilming(kind: 'clip' | 'diary', facing: 'environment' | 'user' = kind === 'diary' ? 'user' : 'environment') {
+    setRefused(null); setBigFilm(null); setClip(null); setCaption('')
+    const cap = FILM_CAP[kind]
+    filmKind.current = kind
+    try {
+      const session = await startFilm(facing, t => {
+        setRolling(r => (r ? { ...r, seconds: t.seconds, bytes: t.bytes } : r))
+        if (t.seconds >= cap) stopFilming()
+      }, () => stopFilming())
+      film.current = session
+      setRolling({ kind, seconds: 0, bytes: 0, facing })
+      setMode('film')
+    } catch (e) {
+      setRefused((e as Error).message)
+      setMode('home')
+    }
+  }
+
+  async function stopFilming() {
+    const session = film.current
+    if (!session) return
+    film.current = null
+    const kind = filmKind.current
+    setSending('Finishing…')
+    const shot = await session.stop(preview.current)
+    setRolling(null)
+    setSending(null)
+    if (!(await playsAnywhere(shot.blob))) {
+      setRefused('This phone films in a format the family’s phones can’t play. Use the camera app instead — the Clip and Diary buttons both offer it.')
+      setMode('home')
+      return
+    }
+    setClip({ kind, file: shot.blob, durationS: shot.durationS, width: shot.width, height: shot.height, poster: shot.poster, url: URL.createObjectURL(shot.blob) })
+    setMode(kind)
+  }
+
+  function dropFilming() {
+    film.current?.cancel(); film.current = null
+    setRolling(null); setMode('home')
+  }
+
+  async function flipCamera() {
+    const r = rolling
+    if (!r) return
+    film.current?.cancel(); film.current = null
+    setRolling(null)
+    await startFilming(r.kind, r.facing === 'user' ? 'environment' : 'user')
   }
 
   async function speak() {
@@ -390,7 +459,7 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
                    base="" publicUrl={publicUrl} actions={walkerActions} onSetPrivate={setPostPrivate} />
 
       {mode !== 'home' && (
-        <div className="go-veil" onClick={() => { if (voice.current) return; setMode('home'); setDraft(null); setPlacing(false) }}>
+        <div className="go-veil" onClick={() => { if (voice.current || film.current) return; setMode('home'); setDraft(null); setPlacing(false) }}>
           <div className="go-panel" onClick={e => e.stopPropagation()}>
       {mode === 'photo' && draft && (
         <div className="sheet">
@@ -477,12 +546,18 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
           <h2>{mode === 'how-photo' ? 'A photo' : 'A clip of the road'}</h2>
           <p className="label">Take one now, or pick one you have already</p>
           <div className="ways">
-            <label className="btn" htmlFor={mode === 'how-photo' ? 'pick-photo-cam' : 'pick-clip-cam'}>
-              {mode === 'how-photo' ? 'Take a photo' : 'Record a clip'}
+            {mode === 'how-clip' && filmSupported() && (
+              <button className="btn" onClick={() => startFilming('clip')}>Film it here</button>
+            )}
+            <label className={`btn${mode === 'how-clip' && filmSupported() ? ' ghost' : ''}`} htmlFor={mode === 'how-photo' ? 'pick-photo-cam' : 'pick-clip-cam'}>
+              {mode === 'how-photo' ? 'Take a photo' : 'Use the camera app'}
             </label>
             <label className="btn ghost" htmlFor={mode === 'how-photo' ? 'pick-photo' : 'pick-clip'}>
               From the gallery
             </label>
+            {mode === 'how-clip' && filmSupported() && (
+              <p className="hint">Filming here keeps it small — about 15 MB a minute, against 100 from the camera app — so it goes up on a thin signal.</p>
+            )}
             <button className="btn ghost" onClick={() => setMode('home')}>Cancel</button>
           </div>
         </div>
@@ -496,9 +571,35 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
             {voiceSupported()
               ? <button className="btn" onClick={speak}>Speak it</button>
               : <p className="hint">This phone won’t record speech in the browser — film it instead.</p>}
-            <label className="btn ghost" htmlFor="pick-diary">Record a video</label>
-            <p className="hint">Spoken entries can run to eight minutes; film can run to {DIARY_SECONDS} seconds if it fits in {Math.round(CLIP_MAX_BYTES / 1048576)} MB. If it doesn’t, we’ll offer to keep just what you said.</p>
+            {filmSupported()
+              ? <button className="btn ghost" onClick={() => startFilming('diary')}>Film it here</button>
+              : <label className="btn ghost" htmlFor="pick-diary">Record a video</label>}
+            {filmSupported() && <label className="btn ghost" htmlFor="pick-diary">Use the camera app</label>}
+            <p className="hint">
+              Spoken entries can run to eight minutes. Filming here runs to {Math.round(FILM_CAP.diary / 60)} minutes and stays small;
+              the camera app has to stay under {DIARY_SECONDS} seconds and {Math.round(CLIP_MAX_BYTES / 1048576)} MB, and if it doesn’t
+              we’ll offer to keep just what you said.
+            </p>
             <button className="btn ghost" onClick={() => setMode('home')}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {mode === 'film' && rolling && (
+        <div className="sheet">
+          <h2>{rolling.kind === 'diary' ? 'Filming a diary entry' : 'Filming'}</h2>
+          <video ref={preview} className={`pv film-pv${rolling.facing === 'user' ? ' mirror' : ''}`} muted playsInline autoPlay />
+          <div className="rec">
+            <span className="rec-dot" aria-hidden="true" />
+            <b className="tnum">{clock(rolling.seconds)}</b>
+            <span className="label">of {clock(FILM_CAP[rolling.kind])} · {mb(rolling.bytes)}</span>
+          </div>
+          <div className="ways">
+            <button className="btn" onClick={stopFilming} disabled={!!sending}>{sending || 'Stop'}</button>
+            <button className="btn ghost" onClick={flipCamera} disabled={!!sending}>
+              {rolling.facing === 'user' ? 'Point it at the road' : 'Point it at us'}
+            </button>
+            <button className="btn ghost" onClick={dropFilming} disabled={!!sending}>Throw it away</button>
           </div>
         </div>
       )}

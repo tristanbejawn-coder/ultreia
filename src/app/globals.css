@@ -416,6 +416,10 @@ label.big-btn{cursor:pointer}
 .ways .hint{margin:0;font-size:12.5px;line-height:1.35;color:var(--ink-2)}
 .ways .btn.ghost{padding:10px}
 /* While it is recording: the count, and a light that says it is live. */
+/* The camera's own picture while it films. Mirrored when it is pointed at
+   them, the way every phone shows a selfie. */
+.film-pv{width:100%;max-height:38dvh;object-fit:cover;background:#000;border-radius:10px}
+.film-pv.mirror{transform:scaleX(-1)}
 .dock-note-acts{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
 .dock-note-acts .btn{font-size:11px;padding:8px 12px}
 .rec{display:flex;align-items:center;gap:10px;margin:6px 0 2px}
