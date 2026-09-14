@@ -60,7 +60,7 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
   const [said, setSaid] = useState<(Recording & { url: string }) | null>(null)
   // A diary film the store won't take: offered as its own soundtrack rather
   // than simply refused.
-  const [bigFilm, setBigFilm] = useState<File | null>(null)
+  const [bigFilm, setBigFilm] = useState<Blob | null>(null)
   // Filming here rather than in the camera app: 720p at 2 Mbit, so a minute
   // is about 15 MB instead of 100.
   const film = useRef<FilmSession | null>(null)
@@ -225,7 +225,10 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
     setRolling(null)
     setSending(null)
     if (!(await playsAnywhere(shot.blob))) {
-      setRefused('This phone films in a format the family’s phones can’t play. Use the camera app instead — the Clip and Diary buttons both offer it.')
+      // The picture is no good to the family, but the voice on it is. Same
+      // offer as a film too big to store: keep what was said.
+      setBigFilm(shot.blob)
+      setRefused('This phone films in a format the family’s phones can’t play, so the picture would be no use to them. Use the camera app instead — or keep what you said:')
       setMode('home')
       return
     }
