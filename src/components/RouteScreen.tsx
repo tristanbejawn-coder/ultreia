@@ -10,7 +10,7 @@ import ShareSheet, { type OwnerLinks } from './ShareSheet'
 import WelcomeSheet, { hasSeenWelcome, markWelcomeSeen } from './WelcomeSheet'
 import type { ClientState } from '@/lib/walk'
 import { placeLore } from '@/lib/lore'
-import { Bell } from './Pwa'
+import { Bell, BuildStamp } from './Pwa'
 import { fmtDatePlus, fmtTime, shortName } from '@/lib/fmt'
 
 type Props = {
@@ -110,6 +110,7 @@ export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, b
             </span>
             <span className="hero-name">{shortName(segs[0]?.from)} → {shortName(segs[segs.length - 1]?.to)}</span>
           </div>
+          <BuildStamp />
           <button className="hero-info" onClick={() => setIntro(true)} aria-label="What is this?">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 11v5.5M12 7.6v.9" /></svg>
           </button>

@@ -371,6 +371,12 @@ label.big-btn{cursor:pointer}
 .sheet h2{font-family:var(--display);font-stretch:62%;font-weight:900;text-transform:uppercase;font-size:22px;line-height:.95;margin:0 0 10px}
 .sheet .pv{width:100%;max-height:44vh;object-fit:contain;background:var(--sunk);margin:0 0 10px}
 .sheet label{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin:10px 0 5px}
+/* A label that is really a button: a file input has to be opened by a label
+   on iOS, and the form-label rule above would otherwise turn it into a grey
+   caption. */
+.sheet label.btn{width:100%;margin:0;padding:14px;text-align:center;font-size:12px;letter-spacing:.12em;
+  border-radius:24px;background:var(--arrow);color:#1B2430;cursor:pointer}
+.sheet label.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
 .sheet input,.sheet textarea,.sheet select{width:100%;border:1px solid var(--line);background:var(--ground);color:var(--ink);font:inherit;padding:10px 12px;border-radius:2px}
 /* Post for everyone, or keep it: two full-width buttons rather than one
    button and a switch, so there is nothing to read twice. */
@@ -487,6 +493,11 @@ label.big-btn{cursor:pointer}
 .hero-share svg{width:18px;height:18px}
 .hero-share:focus-visible{outline:2px solid var(--arrow);outline-offset:2px}
 /* The way back to the welcome sheet, mirroring Share across the header. */
+/* Which build is on this phone, in the corner under the info disc. Quiet
+   until something is missing and you need to know. */
+.build-stamp{position:absolute;left:15px;top:calc(62px + var(--safe-t));z-index:3;border:0;background:none;padding:2px 3px;
+  font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:rgba(255,255,255,.5);text-shadow:0 1px 3px rgba(0,0,0,.85);cursor:pointer}
+.build-stamp:active{color:#fff}
 .hero-info{position:absolute;left:14px;top:calc(16px + var(--safe-t));width:40px;height:40px;border-radius:12px;display:grid;place-items:center;cursor:pointer;
   background:rgba(245,246,243,.16);border:1px solid rgba(255,255,255,.22);color:#F5F6F3;
   -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}

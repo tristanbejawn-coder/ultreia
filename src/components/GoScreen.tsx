@@ -37,7 +37,7 @@ type MapCfg = { tileUrl: string; attribution: string; terrainUrl?: string | null
 export default function GoScreen({ token, map, vapid }: { token: string; map: MapCfg; vapid: string | null }) {
   const [me, setMe] = useState<Me | null>(null)
   const [err, setErr] = useState<string | null>(null)
-  const [mode, setMode] = useState<'home' | 'photo' | 'clip' | 'diary' | 'checkin' | 'fork' | 'post'>('home')
+  const [mode, setMode] = useState<'home' | 'photo' | 'clip' | 'diary' | 'checkin' | 'fork' | 'post' | 'how-photo' | 'how-clip'>('home')
   const [queued, setQueued] = useState(0)
   // A post the server refuses outright used to disappear without a word.
   const [refused, setRefused] = useState<string | null>(null)
@@ -211,22 +211,30 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
       {/* Labels wrapping the inputs: a scripted click on a hidden file input
           has never been dependable on iOS, and these are the buttons the walk
           depends on. */}
+      {/* Two inputs per kind. Android hands a plain image input to the system
+          photo picker, which has no camera in it at all — which is why Jit
+          could only ever reach the gallery — so taking a picture needs its own
+          input carrying `capture`. iOS is happy with either. */}
+      <input id="pick-photo-cam" type="file" accept="image/*" capture="environment" className="file-hidden"
+             onChange={e => { const f = e.target.files?.[0]; if (f) pick(f); e.target.value = '' }} />
       <input id="pick-photo" ref={fileRef} type="file" accept="image/*" className="file-hidden"
              onChange={e => { const f = e.target.files?.[0]; if (f) pick(f); e.target.value = '' }} />
+      <input id="pick-clip-cam" type="file" accept="video/*" capture="environment" className="file-hidden"
+             onChange={e => { const f = e.target.files?.[0]; if (f) pickClip(f, 'clip'); e.target.value = '' }} />
       <input id="pick-clip" ref={clipRef} type="file" accept="video/*" className="file-hidden"
              onChange={e => { const f = e.target.files?.[0]; if (f) pickClip(f, 'clip'); e.target.value = '' }} />
       <input id="pick-diary" ref={diaryRef} type="file" accept="video/*" capture="user" className="file-hidden"
              onChange={e => { const f = e.target.files?.[0]; if (f) pickClip(f, 'diary'); e.target.value = '' }} />
 
       <div className="dock-row">
-        <label className="dock-btn gold" htmlFor="pick-photo">
+        <button className="dock-btn gold" onClick={() => setMode('how-photo')}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="7" width="18" height="13" rx="2.5" /><circle cx="12" cy="13.5" r="3.6" /><path d="M8.5 7l1.3-2.6h4.4L15.5 7" /></svg>
           <b>Photo</b>
-        </label>
-        <label className="dock-btn" htmlFor="pick-clip">
+        </button>
+        <button className="dock-btn" onClick={() => setMode('how-clip')}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="6" width="13" height="12" rx="2.5" /><path d="M16 10.5l5-3v9l-5-3" /></svg>
           <b>Clip</b>
-        </label>
+        </button>
         <label className="dock-btn" htmlFor="pick-diary">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15.5a3.5 3.5 0 0 0 3.5-3.5V7a3.5 3.5 0 0 0-7 0v5a3.5 3.5 0 0 0 3.5 3.5Z" /><path d="M6 12a6 6 0 0 0 12 0M12 18.5V21" /></svg>
           <b>Diary</b>
@@ -352,6 +360,22 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
             <button className="btn" onClick={() => postClip(false)} disabled={!!sending}>{sending || 'Post for everyone'}</button>
             <button className="btn keep" onClick={() => postClip(true)} disabled={!!sending}>{sending ? 'Sending…' : 'Keep it just for us'}</button>
             <button className="btn ghost" onClick={() => { setClip(null); setMode('home') }} disabled={!!sending}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {(mode === 'how-photo' || mode === 'how-clip') && (
+        <div className="sheet">
+          <h2>{mode === 'how-photo' ? 'A photo' : 'A clip of the road'}</h2>
+          <p className="label">Take one now, or pick one you have already</p>
+          <div className="ways">
+            <label className="btn" htmlFor={mode === 'how-photo' ? 'pick-photo-cam' : 'pick-clip-cam'}>
+              {mode === 'how-photo' ? 'Take a photo' : 'Record a clip'}
+            </label>
+            <label className="btn ghost" htmlFor={mode === 'how-photo' ? 'pick-photo' : 'pick-clip'}>
+              From the gallery
+            </label>
+            <button className="btn ghost" onClick={() => setMode('home')}>Cancel</button>
           </div>
         </div>
       )}

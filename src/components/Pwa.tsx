@@ -4,6 +4,7 @@
 // the evening post is in. Subscribing is one tap; the browser asks once.
 
 import { useEffect, useState } from 'react'
+import { BUILD_SHA, buildLabel } from '@/lib/build'
 
 export function RegisterSw() {
   useEffect(() => {
@@ -58,6 +59,33 @@ export function Bell({ endpoint, vapid, what, className }: { endpoint: string; v
     <button type="button" className={`bell${state === 'on' ? ' on' : ''} ${className || ''}`} onClick={toggle} disabled={state === 'busy' || state === 'blocked'} aria-pressed={state === 'on'}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4" /></svg>
       <span>{label}</span>
+    </button>
+  )
+}
+
+// The build stamp in the corner of the map. Small, quiet, and tappable: a
+// phone that has kept an old copy of the app is the first thing to rule out
+// when a button is missing, and one tap here fetches the newest and reloads.
+export function BuildStamp() {
+  const [state, setState] = useState<'idle' | 'checking' | 'fresh'>('idle')
+  async function check() {
+    if (state === 'checking') return
+    setState('checking')
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations()
+        await Promise.all(regs.map(r => r.update().catch(() => {})))
+      }
+    } catch {}
+    // Cache-busted so the phone cannot answer this one from its own shelf.
+    const url = new URL(window.location.href)
+    url.searchParams.set('v', Date.now().toString(36))
+    window.location.replace(url.toString())
+    setState('fresh')
+  }
+  return (
+    <button className="build-stamp" onClick={check} title="Tap to fetch the newest version">
+      {state === 'checking' ? 'updating…' : `${buildLabel()} · ${BUILD_SHA}`}
     </button>
   )
 }
