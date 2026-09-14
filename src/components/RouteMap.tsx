@@ -400,23 +400,36 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         return `${seg.from} → ${seg.to}`
       }
       const dayCards: { el: HTMLElement; at: [number, number]; title: string; text: string }[] = []
-      const finishedDays = [...furthestBy.entries()].filter(([d]) => d < today).sort((a, b) => (a[0] < b[0] ? -1 : 1))
-      finishedDays.forEach(([date, km], i) => {
-        const at = pointAt(pts, km)
+      // Days of the walk, not days with a photograph in them: the journey out
+      // to Porto had pictures too, and none of it was walking. A day also
+      // needs to have gone somewhere — a rest day leaves no stone.
+      const start = state.walk.startsOn
+      const dayNo = (date: string) =>
+        start ? Math.round((Date.parse(date) - Date.parse(start)) / 86400000) + 1 : 0
+      const spoke = new Intl.DateTimeFormat('en-GB', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long' })
+      let reached = 0
+      const finishedDays: { date: string; km: number; n: number; from: number }[] = []
+      for (const [date, km] of [...furthestBy.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
+        if (date >= today) continue                      // today is not over
+        if (start && date < start) continue              // before they set off
+        if (km <= reached + 0.5) continue                 // a rest day, or a day off the road
+        finishedDays.push({ date, km, n: dayNo(date), from: reached })
+        reached = km
+      }
+      for (const d of finishedDays) {
+        const at = pointAt(pts, d.km)
         const el = document.createElement('button')
         el.className = 'mk-day'
         el.type = 'button'
-        el.innerHTML = `<i>${i + 1}</i>`
-        const before = i > 0 ? finishedDays[i - 1][1] : 0
-        const title = `Day ${i + 1} ended here`
-        const text = `${placeAtKm(km)} · km ${km.toFixed(0)} · ${(km - before).toFixed(0)} km that day`
+        el.innerHTML = `<i>${d.n || finishedDays.indexOf(d) + 1}</i>`
+        const title = `Day ${d.n || finishedDays.indexOf(d) + 1} · ${placeAtKm(d.km)}`
+        const text = `${spoke.format(new Date(d.date + 'T12:00:00Z'))} · ${(d.km - d.from).toFixed(0)} km walked, to km ${d.km.toFixed(0)}`
         el.title = `${title} — ${text}`
         el.setAttribute('aria-label', `${title}, ${text}`)
         layer(new maplibregl.Marker({ element: el, anchor: 'center', offset: [0, 0] }).setLngLat(at).addTo(map), 3)
         occupied.push(el)
         dayCards.push({ el, at, title, text })
-        void date
-      })
+      }
 
       for (const d of dayCards) {
         onTap(d.el, () => {
