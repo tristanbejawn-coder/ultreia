@@ -31,27 +31,48 @@ export function filmSupported(): boolean {
   return typeof window !== 'undefined' && !!navigator.mediaDevices?.getUserMedia && !!filmMime()
 }
 
-// H.264, named in the file's own boxes. A build that offers MP4 but writes
-// VP9 or Opus inside it — this is real, and Chromium without the proprietary
-// codecs does exactly that — is caught here rather than at the family's end.
+// Will the family's phones play this film?
 //
-// Where the codec is named depends on who wrote the file: a recorder puts the
-// moov box at the front, while a phone's camera app usually leaves it at the
-// very end, after the picture. Both ends are read, so a good file is never
-// turned away for being written the ordinary way round.
-const HEAD = 96 * 1024, TAIL = 256 * 1024
-async function boxes(blob: Blob): Promise<string> {
+// The codec is named inside the file's `moov` box, and only there: scanning
+// raw bytes for "VP9" finds it in the middle of the picture as often as in a
+// codec name, which is how a good film came to be turned away. So the top
+// level boxes are walked — a recorder writes moov at the front, a phone's
+// camera app leaves it at the very end, both are found — and only what it
+// says is believed.
+//
+// H.264 and HEVC both play on iPhones and on Android: Jit's own camera
+// records HEVC. What is refused is the web's own codecs, VP8, VP9, AV1 and
+// Opus, which Safari will not play — and which a Chromium without the
+// licensed encoders quietly writes inside an MP4 container when asked for one.
+async function moovOf(blob: Blob): Promise<string | null> {
   const dec = new TextDecoder('latin1')
-  const head = dec.decode(await blob.slice(0, Math.min(blob.size, HEAD)).arrayBuffer())
-  if (blob.size <= HEAD) return head
-  return head + dec.decode(await blob.slice(Math.max(HEAD, blob.size - TAIL)).arrayBuffer())
+  let off = 0
+  for (let hops = 0; hops < 64 && off + 8 <= blob.size; hops++) {
+    const head = new DataView(await blob.slice(off, off + 16).arrayBuffer())
+    if (head.byteLength < 8) return null
+    let size = head.getUint32(0)
+    let headerLen = 8
+    const type = dec.decode(new Uint8Array(head.buffer, 4, 4))
+    if (size === 1) {
+      if (head.byteLength < 16) return null
+      size = Number(head.getBigUint64(8)); headerLen = 16
+    } else if (size === 0) {
+      size = blob.size - off
+    }
+    if (type === 'moov') {
+      return dec.decode(await blob.slice(off + headerLen, Math.min(blob.size, off + size)).arrayBuffer())
+    }
+    if (size < 8) return null
+    off += size
+  }
+  return null
 }
 
 export async function playsAnywhere(blob: Blob): Promise<boolean> {
-  const text = await boxes(blob)
-  if (!text.includes('ftyp')) return false
-  if (/OpusHead|Opus|vp09|vp08|VP8|VP9/.test(text)) return false
-  return text.includes('avc1')
+  const moov = await moovOf(blob)
+  if (!moov) return false
+  if (/vp09|vp08|av01|Opus/.test(moov)) return false
+  return /avc1|avc3|hvc1|hev1/.test(moov)
 }
 
 export type Film = { blob: Blob; mime: string; durationS: number; width: number; height: number; poster: Blob | null }
