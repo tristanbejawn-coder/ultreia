@@ -96,11 +96,20 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
 
   async function pickClip(f: File, kind: 'clip' | 'diary') {
     setRefused(null)
-    if (f.size > CLIP_MAX_BYTES) { setRefused(`That one is ${Math.round(f.size / 1048576)} MB and the store takes ${Math.round(CLIP_MAX_BYTES / 1048576)}. Record it shorter, or turn the camera down to 1080p in Settings › Camera.`); return }
+    if (f.size > CLIP_MAX_BYTES) {
+      setRefused(kind === 'diary'
+        ? `That one is ${Math.round(f.size / 1048576)} MB and the store takes ${Math.round(CLIP_MAX_BYTES / 1048576)}. Tap Diary again and choose “Speak it” — a spoken entry is a hundredth of the size.`
+        : `That one is ${Math.round(f.size / 1048576)} MB and the store takes ${Math.round(CLIP_MAX_BYTES / 1048576)}. Record it shorter, or turn the camera down to 1080p in Settings › Camera.`)
+      return
+    }
     try {
       const read = await readClip(f)
       if (read.readable && read.durationS > CLIP_SECONDS + 1) {
-        setRefused(`${read.durationS} seconds is too long — ${CLIP_SECONDS} is the most. Trim it in Photos and try again.`)
+        // Now that a diary can be spoken, the answer to a long one is to say
+        // it rather than to go and trim it in Photos.
+        setRefused(kind === 'diary'
+          ? `That runs ${read.durationS} seconds, and video has to stay under ${CLIP_SECONDS} — the store won’t take more. Tap Diary again and choose “Speak it”: a spoken entry can run to eight minutes.`
+          : `${read.durationS} seconds is too long — ${CLIP_SECONDS} is the most. Trim it in Photos and try again.`)
         return
       }
       setClip({ kind, file: f, durationS: read.durationS, width: read.width, height: read.height, poster: read.poster, url: URL.createObjectURL(f) })
