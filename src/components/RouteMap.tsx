@@ -238,14 +238,24 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
           standing.reduce((a, b) => Math.hypot(a.x - u.x, a.y - u.y) <= Math.hypot(b.x - u.x, b.y - u.y) ? a : b).n++
         }
 
-        // Diaries: always up, and only ever hidden by another diary.
-        const spoken: { x: number; y: number }[] = []
+        // Diaries: always up, and only ever hidden by another diary — which
+        // happens the moment two are recorded in the same place. The one
+        // standing says how many are underneath it, the way the prints do,
+        // and the lightbox pages through the rest.
+        const spoken: { x: number; y: number; el: HTMLElement; n: number }[] = []
         for (const el of diaryEls) {
           el.style.display = ''
           const c = centreOf(el, box)
           const over = spoken.find(t => Math.hypot(t.x - c.x, t.y - c.y) < 26)
-          if (over) el.style.display = 'none'
-          else spoken.push(c)
+          if (over) { el.style.display = 'none'; over.n++ }
+          else spoken.push({ ...c, el, n: 1 })
+        }
+        for (const d of spoken) {
+          const badge = d.el.querySelector('.n') as HTMLElement | null
+          if (d.n > 1) {
+            if (badge) badge.textContent = String(d.n)
+            else { const b = document.createElement('span'); b.className = 'n'; b.textContent = String(d.n); d.el.appendChild(b) }
+          } else if (badge) badge.remove()
         }
 
         for (const s of standing) {

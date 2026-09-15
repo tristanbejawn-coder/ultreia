@@ -154,9 +154,13 @@ button.chip.fact:hover,button.chip.fact:focus-visible{border-color:var(--arrow);
 .mk-photo.keep{border-color:#82B2DD;box-shadow:0 3px 10px rgba(0,0,0,.55),0 0 0 1px rgba(130,178,221,.45)}
 .mk-photo.keep:hover,.mk-photo.keep:focus-visible{border-color:#BBD8F2;box-shadow:0 4px 16px rgba(0,0,0,.65),0 0 0 4px rgba(130,178,221,.35)}
 .mk-photo.keep .n{background:#1B3247;border-color:#82B2DD}
+.mk-diary .n{position:absolute;right:-7px;bottom:-7px;min-width:19px;height:19px;padding:0 4px;border-radius:10px;
+  background:#1B2430;color:#fff;border:2px solid #fff;font-family:var(--mono);font-size:10px;line-height:15px;
+  text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.45)}
 .mk-diary.keep{border-color:#82B2DD}
+.mk-diary.keep .n{background:#1B3247;border-color:#82B2DD}
 .mk-diary.keep::after{border-left-color:#82B2DD}
-.mk-diary{width:30px;height:30px;border-radius:50%;border:2.5px solid #fff;background:rgba(27,36,48,.85);box-shadow:0 3px 10px rgba(0,0,0,.55);display:grid;place-items:center;cursor:pointer}
+.mk-diary{position:relative;width:30px;height:30px;border-radius:50%;border:2.5px solid #fff;background:rgba(27,36,48,.85);box-shadow:0 3px 10px rgba(0,0,0,.55);display:grid;place-items:center;cursor:pointer}
 .mk-diary::after{content:"";width:0;height:0;border-left:9px solid #F0B429;border-top:6px solid transparent;border-bottom:6px solid transparent;margin-left:3px}
 /* Facts on the ground. The ring is small on purpose — quieter than a
    photograph — so it takes no pointer events at all: the map handles the tap
