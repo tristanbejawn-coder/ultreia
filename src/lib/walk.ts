@@ -23,7 +23,8 @@ export type PostRow = {
   private: boolean
 }
 export type Post = PostRow & { media_url: string | null; poster_url: string | null; reactions: Record<string, number> }
-export type MessageRow = { id: string; from_name: string; body: string; written_at: string; delivered_at: string | null }
+export const MESSAGE_COLS = 'id,from_name,body,written_at,delivered_at,private,from_place,at_km,at_place'
+export type MessageRow = { id: string; from_name: string; body: string; written_at: string; delivered_at: string | null; private: boolean; from_place: string | null; at_km: number | null; at_place: string | null }
 
 export type WalkState = {
   walk: WalkRow
@@ -110,7 +111,9 @@ export async function getWalkState(slug: string, withPrivate = false): Promise<W
     const link = (path: string | null, isPrivate: boolean) =>
       (isPrivate ? (path ? signed[path] ?? null : null) : publicUrl(path))
     posts = shown.map(r => ({ ...r, media_url: link(r.media_path, r.private), poster_url: link(r.poster_path, r.private), reactions: byPost[r.id] || {} }))
-    messages = await dbSelect<MessageRow>(`ultreia_messages?walk_id=eq.${walk.id}&deleted_at=is.null&select=id,from_name,body,written_at,delivered_at&order=written_at.desc&limit=200`)
+    // Sealed notes are for the walkers' phones only; they come through the
+    // go route's bundle, never through here.
+    messages = await dbSelect<MessageRow>(`ultreia_messages?walk_id=eq.${walk.id}&deleted_at=is.null&private=eq.false&select=${MESSAGE_COLS}&order=written_at.desc&limit=200`)
   }
 
   // Position: the furthest kilometre they've been placed at, by check-in or
@@ -139,6 +142,7 @@ export function todaySegment(state: WalkState) {
 export function serialize(state: WalkState) {
   const seg = todaySegment(state)
   return {
+    camino: { id: state.camino.id, name: state.camino.name },
     walk: { slug: state.walk.slug, name: state.walk.name, walkers: state.walk.walkers, startsOn: state.walk.starts_on, digestHour: state.walk.digest_hour, avatarUrl: publicUrl(state.walk.avatar_path), timezone: state.walk.timezone, code: state.walk.code || null },
     route: {
       points: state.route.points.map(p => [p.lng, p.lat, +p.km.toFixed(3)] as [number, number, number]),

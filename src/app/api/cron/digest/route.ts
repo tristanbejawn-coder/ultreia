@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { dbConfigured, dbSelect, dbUpdate } from '@/lib/db'
 import { pushTo } from '@/lib/push'
 import { cronSignature, today } from '@/lib/cronAuth'
+import { getWalkState, serialize } from '@/lib/walk'
+import { walkStats } from '@/lib/postcard'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,9 +25,17 @@ export async function POST(req: Request) {
     const waiting = await dbSelect<{ id: string }>(`ultreia_messages?walk_id=eq.${w.id}&deleted_at=is.null&delivered_at=is.null&select=id`)
     if (!waiting.length) continue
     const n = waiting.length
+    // Franked with where the walkers are as it goes out: the postmark and
+    // the address on every card are a snapshot of the walk at that moment.
+    const st = await getWalkState(w.slug)
+    const at = st ? walkStats(serialize(st)) : null
     // Stamp before pushing: a message counted as delivered and never pushed
     // is on the walkers' screen regardless; the other way round bundles it again tomorrow.
-    await dbUpdate(`ultreia_messages?id=in.(${waiting.map(m => m.id).join(',')})`, { delivered_at: new Date().toISOString() })
+    await dbUpdate(`ultreia_messages?id=in.(${waiting.map(m => m.id).join(',')})`, {
+      delivered_at: new Date().toISOString(),
+      at_km: at ? +at.km.toFixed(1) : null,
+      at_place: at ? at.place.replace(/^towards /, '') : null,   // the town, as a postmark has
+    })
     const pushed = await pushTo(w.id, 'walker', {
       title: n === 1 ? 'One message from home' : `${n} messages from home`,
       body: 'Tonight’s post is in.', url: '/', tag: 'post',
