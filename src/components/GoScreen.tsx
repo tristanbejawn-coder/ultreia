@@ -12,10 +12,11 @@ import { enqueue, drain, all } from '@/lib/queue'
 import { CLIP_MAX_BYTES, CLIP_SECONDS, DIARY_SECONDS, readClip, uploadDirect } from '@/lib/clip'
 import { clock, playableEverywhere, soundFrom, startVoice, voiceSupported, VOICE_SECONDS, type Recording, type VoiceSession } from '@/lib/voice'
 import { FILM_CAP, filmSupported, mb, playsAnywhere, startFilm, type FilmSession } from '@/lib/film'
-import type { ClientState } from '@/lib/walk'
+import type { ClientState, MessageRow } from '@/lib/walk'
+import Postcard from './Postcard'
 import { fmtDate } from '@/lib/fmt'
 
-type Bundle = { id: string; from_name: string; body: string; written_at: string; delivered_at: string | null }[]
+type Bundle = MessageRow[]
 type Me = { walker: { key: string; name: string }; state: ClientState; bundle: Bundle }
 
 async function shrink(file: File, maxDim = 1800): Promise<{ blob: Blob; width: number; height: number }> {
@@ -682,8 +683,8 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
         <div className="sheet">
           <h2>{tonight.length ? `${tonight.length} tonight` : 'The post'}</h2>
           {tonight.length > 0 && <p className="label">Arrives all at once at {String(state.walk.digestHour).padStart(2, '0')}:00</p>}
-          <div className="msgs">
-            {delivered.map(m => <div className="msg" key={m.id}><div className="who"><span>{m.from_name}</span><span>{fmtDate(m.written_at, state.walk.timezone)}</span></div><p>{m.body}</p></div>)}
+          <div className="cards">
+            {delivered.map(m => <Postcard key={m.id} m={m} walkers={state.walk.walkers.map(w => w.name).join(' and ')} tz={state.walk.timezone} camino={state.camino.name} />)}
             {!delivered.length && <p className="empty" style={{ padding: '20px 0' }}>Nothing delivered yet.</p>}
           </div>
           <div className="row"><button className="btn ghost" onClick={() => setMode('home')}>Back</button></div>
