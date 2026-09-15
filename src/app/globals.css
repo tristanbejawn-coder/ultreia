@@ -580,3 +580,18 @@ label.big-btn{cursor:pointer}
 .share-sheet .btn{background:#F0B429;color:#1B2430}
 .share-sheet .btn.ghost{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.22);color:#E4E7E4}
 .share-sheet .btn.block{margin-top:14px}
+
+/* the postcard home */
+.dock-post{display:flex;align-items:center;gap:11px;width:100%;text-align:left;background:var(--ground);border:1px solid var(--line);border-radius:14px;padding:10px 13px;cursor:pointer;font:inherit;color:var(--ink)}
+.dock-post svg{width:22px;height:22px;flex:none;stroke:var(--arrow-ink)}
+.dock-post b{display:block;font-family:var(--display);font-stretch:62%;font-weight:900;text-transform:uppercase;font-size:15px;line-height:1.05}
+.dock-post span span{display:block;font-size:12px;color:var(--ink-2);margin-top:2px}
+.card-picks{display:flex;gap:6px;overflow-x:auto;padding:2px 0 6px;-webkit-overflow-scrolling:touch}
+.card-pick{flex:none;width:64px;height:64px;border-radius:6px;border:2px solid transparent;background:var(--sunk) center/cover;cursor:pointer;padding:0}
+.card-pick.on{border-color:var(--arrow);box-shadow:0 0 0 2px var(--surface)}
+.card-designs{display:flex;gap:8px;overflow-x:auto;padding:2px 0 4px;min-height:40px}
+.card-thumb{flex:none;height:120px;width:auto;border-radius:4px;border:2px solid transparent;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+.card-thumb.on{border-color:var(--arrow)}
+.card-note{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin:2px 0 8px}
+.card-stage{background:var(--sunk);display:grid;place-items:center;padding:8px;border-radius:2px}
+.card-preview{max-width:100%;height:auto;max-height:52dvh;box-shadow:0 8px 24px rgba(0,0,0,.25)}
