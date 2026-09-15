@@ -50,9 +50,13 @@ export function walkStats(state: ClientState, now = new Date()): Stats {
   const stage = cur ? `${cur.from} → ${cur.to}` : ''
   // Walking days left: every stage not yet finished, boats excepted (a boat
   // is a morning, not a day). The current stage ends today.
+  // Standing at the start of a stage (a check-in at the end of the last one)
+  // means that stage is tomorrow's and the count of days is one more; partway
+  // through, today's stage is the one they're on.
   const left = segs.filter(s => s.endKm > km + 0.05 && s.transport !== 'boat')
-  const eta = state.finished ? null : left.length ? `about ${fmtDatePlus(today, Math.max(0, left.length - 1))}` : null
-  const nextSeg = curSeg ? segs[segs.indexOf(curSeg) + 1] : null
+  const daysLeft = atStart ? left.length : Math.max(0, left.length - 1)
+  const eta = state.finished ? null : left.length ? `about ${fmtDatePlus(today, daysLeft)}` : null
+  const nextSeg = curSeg ? (atStart ? curSeg : segs[segs.indexOf(curSeg) + 1]) : null
   const next = nextSeg && !state.finished ? { name: nextSeg.to, km: +(nextSeg.endKm - nextSeg.km).toFixed(0) } : null
   return {
     day, date: fmtDatePlus(today, 0), place, stage,

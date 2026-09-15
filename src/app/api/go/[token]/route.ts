@@ -13,6 +13,6 @@ export async function GET(_: Request, ctx: { params: Promise<{ token: string }> 
   // Their own link, so their own scrapbook comes too.
   const state = await getWalkState(auth.walk.slug, true)
   if (!state) return NextResponse.json({ error: 'no such walk' }, { status: 404 })
-  const bundle = await dbSelect<MessageRow>(`ultreia_messages?walk_id=eq.${auth.walk.id}&deleted_at=is.null&select=${MESSAGE_COLS}&order=written_at.desc&limit=100`)
+  const bundle = await dbSelect<MessageRow>(`ultreia_messages?walk_id=eq.${auth.walk.id}&deleted_at=is.null&select=${MESSAGE_COLS}&order=written_at.desc&limit=500`)
   return NextResponse.json({ walker: auth.walker, state: serialize(state), bundle })
 }

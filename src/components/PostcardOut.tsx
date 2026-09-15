@@ -7,23 +7,26 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ClientState } from '@/lib/walk'
 import { DESIGNS, SIZE, loadFonts, loadPhoto, render, shareText, toJpeg, walkStats, type Design } from '@/lib/postcard'
 
-type Pick = { id: string; url: string; caption: string | null; takenAt: string }
+type Pick = { id: string; url: string; caption: string | null; takenAt: string; private: boolean }
 
 export default function PostcardOut({ state, publicUrl, onClose }: { state: ClientState; publicUrl: string; onClose: () => void }) {
   // Every picture they have, their own scrapbook included — it is their
-  // postcard. Newest first, so the default is what they took today.
+  // postcard — but a kept picture is marked, and never the one chosen for
+  // them: sending it is sharing it.
   const picks = useMemo<Pick[]>(() => state.posts
     .filter(p => (p.kind === 'photo' && p.mediaUrl) || ((p.kind === 'clip' || p.kind === 'diary') && p.posterUrl))
-    .map(p => ({ id: p.id, url: (p.kind === 'photo' ? p.mediaUrl : p.posterUrl) as string, caption: p.caption, takenAt: p.takenAt })), [state.posts])
-  const [pick, setPick] = useState<Pick | null>(picks[0] || null)
+    .map(p => ({ id: p.id, url: (p.kind === 'photo' ? p.mediaUrl : p.posterUrl) as string, caption: p.caption, takenAt: p.takenAt, private: !!p.private })), [state.posts])
+  const [pick, setPick] = useState<Pick | null>(picks.find(p => !p.private) || picks[0] || null)
   const [design, setDesign] = useState<Design>('print')
   const [img, setImg] = useState<HTMLImageElement | null>(null)
+  const [file, setFile] = useState<File | null>(null)
   const [err, setErr] = useState<string | null>(null)
-  const [busy, setBusy] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
   const preview = useRef<HTMLDivElement>(null)
   const thumbs = useRef<HTMLDivElement>(null)
   const stats = useMemo(() => walkStats(state), [state])
   const url = typeof window !== 'undefined' ? `${window.location.origin}${publicUrl === '/' ? '' : publicUrl}` : publicUrl
+  const name = `ultreia-${stats.day ? `day-${stats.day}` : 'soon'}.jpg`
 
   useEffect(() => {
     if (!pick) return
@@ -33,8 +36,10 @@ export default function PostcardOut({ state, publicUrl, onClose }: { state: Clie
     return () => { live = false }
   }, [pick])
 
-  // The three designs drawn small for choosing, and the chosen one drawn
-  // large enough to look at. The full-size one is made only when sending.
+  // The three designs drawn small for choosing, the chosen one drawn large
+  // enough to look at, and the full-size file made now rather than on the
+  // tap: Safari only lets a share happen in the moment of the tap, and a
+  // JPEG that takes a second to encode can miss it.
   useEffect(() => {
     if (!img || !thumbs.current || !preview.current) return
     thumbs.current.replaceChildren()
@@ -50,38 +55,50 @@ export default function PostcardOut({ state, publicUrl, onClose }: { state: Clie
     const big = render(design, state, stats, img, url, Math.min(1, 720 / w))
     big.className = 'card-preview'
     preview.current.replaceChildren(big)
-  }, [img, design, state, stats, url])
+    let live = true
+    setFile(null)
+    toJpeg(render(design, state, stats, img, url))
+      .then(b => { if (live) setFile(new File([b], name, { type: 'image/jpeg' })) })
+      .catch(e => { if (live) setErr(String(e.message || e)) })
+    return () => { live = false }
+  }, [img, design, state, stats, url, name])
+
+  const canShareFile = (f: File) => typeof navigator.canShare === 'function' && navigator.canShare({ files: [f] })
 
   async function send() {
-    if (!img) return
-    setBusy('Making it…')
+    if (!file) return
+    setBusy(true); setErr(null)
     try {
-      const blob = await toJpeg(render(design, state, stats, img, url))
-      const name = `ultreia-${stats.day ? `day-${stats.day}` : 'soon'}.jpg`
-      const file = new File([blob], name, { type: 'image/jpeg' })
-      const text = shareText(state, stats, url)
-      if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
-        try { await navigator.share({ files: [file], text }) } catch { /* they closed the sheet */ }
+      if (canShareFile(file)) {
+        await navigator.share({ files: [file], text: shareText(state, stats, url) })
       } else {
         // No file sharing here: save the picture, then open WhatsApp with the words.
-        save(blob, name)
-        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
+        download(file)
+        window.open(`https://wa.me/?text=${encodeURIComponent(shareText(state, stats, url))}`, '_blank')
       }
-    } catch (e) { setErr(String((e as Error).message || e)) }
-    setBusy(null)
+    } catch (e) {
+      // Closing the sheet is not an error; anything else is worth saying.
+      if ((e as Error).name !== 'AbortError') setErr(`Couldn’t hand it over (${(e as Error).message || 'unknown'}). Save it instead, then send it from your photos.`)
+    } finally { setBusy(false) }
   }
 
   async function keep() {
-    if (!img) return
-    setBusy('Making it…')
-    try { save(await toJpeg(render(design, state, stats, img, url)), `ultreia-${stats.day ? `day-${stats.day}` : 'soon'}.jpg`) }
-    catch (e) { setErr(String((e as Error).message || e)) }
-    setBusy(null)
+    if (!file) return
+    setBusy(true); setErr(null)
+    try {
+      // Through the share sheet where there is one: on an iPhone that is
+      // where "Save Image" lives, and a download link in an installed app
+      // is not to be relied on.
+      if (canShareFile(file)) await navigator.share({ files: [file] })
+      else download(file)
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') setErr(`Couldn’t save it (${(e as Error).message || 'unknown'}).`)
+    } finally { setBusy(false) }
   }
 
-  function save(blob: Blob, name: string) {
+  function download(f: File) {
     const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob); a.download = name; a.click()
+    a.href = URL.createObjectURL(f); a.download = f.name; a.click()
     setTimeout(() => URL.revokeObjectURL(a.href), 30000)
   }
 
@@ -96,9 +113,10 @@ export default function PostcardOut({ state, publicUrl, onClose }: { state: Clie
           <label>The picture</label>
           <div className="card-picks">
             {picks.map(p => (
-              <button key={p.id} className={`card-pick${pick?.id === p.id ? ' on' : ''}`} style={{ backgroundImage: `url("${p.url}")` }} onClick={() => setPick(p)} aria-label={p.caption || 'Photo'} />
+              <button key={p.id} className={`card-pick${pick?.id === p.id ? ' on' : ''}${p.private ? ' keep' : ''}`} style={{ backgroundImage: `url("${p.url}")` }} onClick={() => setPick(p)} aria-label={`${p.caption || 'Photo'}${p.private ? ' (just for us)' : ''}`} />
             ))}
           </div>
+          {pick?.private && <p className="card-note keep">This one is from your scrapbook. Sending it shares it.</p>}
           <label>The design</label>
           <div className="card-designs" ref={thumbs}>
             {!img && !err && <p className="empty" style={{ padding: '18px 0' }}>Drawing…</p>}
@@ -107,9 +125,9 @@ export default function PostcardOut({ state, publicUrl, onClose }: { state: Clie
           <div className="card-stage" ref={preview} />
           {err && <p className="notice warn">{err}</p>}
           <div className="row">
-            <button className="btn" onClick={send} disabled={!img || !!busy}>{busy || 'Send it'}</button>
-            <button className="btn ghost" onClick={keep} disabled={!img || !!busy}>Save</button>
-            <button className="btn ghost" onClick={onClose} disabled={!!busy}>Back</button>
+            <button className="btn" onClick={send} disabled={!file || busy}>{!img ? 'Drawing…' : !file ? 'Making it…' : busy ? 'Sending…' : 'Send it'}</button>
+            <button className="btn ghost" onClick={keep} disabled={!file || busy}>Save</button>
+            <button className="btn ghost" onClick={onClose} disabled={busy}>Back</button>
           </div>
         </>
       )}

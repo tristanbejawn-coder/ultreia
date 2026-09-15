@@ -53,6 +53,10 @@ self.addEventListener('notificationclick', e => {
   e.notification.close()
   const url = (e.notification.data && e.notification.data.url) || '/'
   e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    // A walker's window is their private link; the post is on it already
+    // (it polls), so bring it forward rather than sending them to the family page.
+    const own = list.find(c => 'focus' in c && new URL(c.url).pathname.startsWith('/go/'))
+    if (own) return own.focus()
     for (const c of list) if ('focus' in c) { c.navigate(url); return c.focus() }
     return self.clients.openWindow(url)
   }))

@@ -23,6 +23,7 @@ export default function WallScreen({ state }: { state: ClientState }) {
   const [place, setPlaceState] = useState(getPlace() || '')
   const [busy, setBusy] = useState<'card' | 'seal' | null>(null)
   const [sealed, setSealed] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
   const prompt = PROMPTS[msgs.length % PROMPTS.length]
   const walkers = state.walk.walkers.map(w => w.name).join(' and ')
   const pending = msgs.filter(m => !m.delivered_at).length
@@ -30,17 +31,21 @@ export default function WallScreen({ state }: { state: ClientState }) {
 
   async function send(isPrivate: boolean) {
     if (!body.trim() || !name.trim()) return
-    setBusy(isPrivate ? 'seal' : 'card'); setName(name.trim()); setPlace(place.trim())
-    const res = await fetch(`/api/walk/${state.walk.slug}/message`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fromName: name.trim(), fromPlace: place.trim() || null, body: body.trim(), private: isPrivate }),
-    })
-    setBusy(null)
-    if (!res.ok) { alert('That didn’t send. Try again in a moment.'); return }
-    const m = await res.json()
-    setBody('')
-    if (isPrivate) setSealed(true)
-    else { setSealed(false); setMsgs([m, ...msgs]) }
+    setBusy(isPrivate ? 'seal' : 'card'); setErr(null); setName(name.trim()); setPlace(place.trim())
+    try {
+      const res = await fetch(`/api/walk/${state.walk.slug}/message`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fromName: name.trim(), fromPlace: place.trim() || null, body: body.trim(), private: isPrivate }),
+      })
+      if (!res.ok) throw new Error('refused')
+      const m = await res.json()
+      setBody('')
+      if (isPrivate) setSealed(true)
+      else { setSealed(false); setMsgs([m, ...msgs]) }
+    } catch {
+      // The draft stays in the box; nothing to retype.
+      setErr('That didn’t send. Check the signal and try again.')
+    } finally { setBusy(null) }
   }
 
   return (
@@ -61,6 +66,7 @@ export default function WallScreen({ state }: { state: ClientState }) {
         </div>
         <p className="compose-note">A postcard goes up here for everyone. A sealed note reaches only {walkers}, and isn’t shown here at all.</p>
       </div>
+      {err && <p className="notice warn">{err}</p>}
       {sealed && <p className="notice">Sealed. {walkers} get it at {hour}:00.</p>}
       <div className="cards">
         {msgs.map(m => <Postcard key={m.id} m={m} walkers={walkers} tz={state.walk.timezone} camino={state.camino.name} />)}
