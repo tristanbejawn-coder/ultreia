@@ -31,7 +31,9 @@ export async function POST(req: Request) {
     const at = st ? walkStats(serialize(st)) : null
     // Stamp before pushing: a message counted as delivered and never pushed
     // is on the walkers' screen regardless; the other way round bundles it again tomorrow.
-    await dbUpdate(`ultreia_messages?id=in.(${waiting.map(m => m.id).join(',')})`, {
+    // `delivered_at=is.null` on the update itself: if two knocks overlap, only
+    // the first stamps these rows, and the second finds nothing waiting.
+    await dbUpdate(`ultreia_messages?id=in.(${waiting.map(m => m.id).join(',')})&delivered_at=is.null`, {
       delivered_at: new Date().toISOString(),
       at_km: at ? +at.km.toFixed(1) : null,
       at_place: at ? at.place.replace(/^towards /, '') : null,   // the town, as a postmark has
