@@ -12,6 +12,7 @@ import type { ClientState } from '@/lib/walk'
 import { placeLore } from '@/lib/lore'
 import { Bell, BuildStamp } from './Pwa'
 import { fmtDatePlus, fmtTime, shortName } from '@/lib/fmt'
+import { dayOfWalk, placeAtKm } from '@/lib/place'
 
 type Props = {
   state: ClientState; tileUrl: string; attribution: string; terrainUrl?: string | null
@@ -80,7 +81,9 @@ export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, b
   const ringLen = 2 * Math.PI * 22
   const ringDone = ringLen * (segs.length ? doneCount / segs.length : 0)
   const lastSeen = state.position.lastSeenAt ? fmtTime(state.position.lastSeenAt, state.walk.timezone) : null
-  const dayNo = state.walk.startsOn && state.started && seg ? todayIndex + 1 : null
+  // Which day of the walk, from the calendar: they spent two days on the
+  // first stage, and the stage number said day one on the second morning.
+  const dayNo = state.started ? dayOfWalk(state.walk.startsOn, state.walk.timezone) : null
 
   // Stages to list: walked ones newest first, plus today's; before day one, the first three
   // What stands on the ground of each stage, for the cards below. The
@@ -146,7 +149,7 @@ export default function RouteScreen({ state, tileUrl, attribution, terrainUrl, b
             ) : (
               <>
                 <div className="big tnum">{toGo.toFixed(toGo < 10 ? 1 : 0)}<small>km to go</small></div>
-                <div className="label">{state.position.km.toFixed(0)} walked{dayNo ? ` · day ${dayNo}` : ''}{seg && lastSeen ? ` · ${seg.from} at ${lastSeen}` : ''}</div>
+                <div className="label">{state.position.km.toFixed(0)} walked{dayNo ? ` · day ${dayNo}` : ''}{lastSeen ? ` · ${placeAtKm(state.route.segments, state.position.km)} at ${lastSeen}` : ''}</div>
               </>
             )}
           </div>

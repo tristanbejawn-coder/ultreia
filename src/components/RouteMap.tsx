@@ -10,6 +10,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { figuresSvg } from './Figures'
 import { placeLore, type PlacedLore } from '@/lib/lore'
 import type { ClientState } from '@/lib/walk'
+import { placeAtKm } from '@/lib/place'
 
 type Props = {
   state: ClientState
@@ -401,14 +402,6 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         const d = dayOf(p.takenAt)
         furthestBy.set(d, Math.max(furthestBy.get(d) ?? 0, p.km))
       }
-      // Which town a kilometre is at, or between.
-      const placeAtKm = (km: number) => {
-        const seg = state.route.segments.find(x => km >= x.km - 0.05 && km <= x.endKm + 0.05)
-        if (!seg) return ''
-        if (km >= seg.endKm - 1.2) return seg.to
-        if (km <= seg.km + 1.2) return seg.from
-        return `${seg.from} → ${seg.to}`
-      }
       const dayCards: { el: HTMLElement; at: [number, number]; title: string; text: string }[] = []
       // Days of the walk, not days with a photograph in them: the journey out
       // to Porto had pictures too, and none of it was walking. A day also
@@ -432,7 +425,7 @@ export default function RouteMap({ state, tileUrl, attribution, terrainUrl, onOp
         el.className = 'mk-day'
         el.type = 'button'
         el.innerHTML = `<i>${d.n || finishedDays.indexOf(d) + 1}</i>`
-        const title = `Day ${d.n || finishedDays.indexOf(d) + 1} · ${placeAtKm(d.km)}`
+        const title = `Day ${d.n || finishedDays.indexOf(d) + 1} · ${placeAtKm(state.route.segments, d.km)}`
         const text = `${spoke.format(new Date(d.date + 'T12:00:00Z'))} · ${(d.km - d.from).toFixed(0)} km walked, to km ${d.km.toFixed(0)}`
         el.title = `${title} — ${text}`
         el.setAttribute('aria-label', `${title}, ${text}`)
