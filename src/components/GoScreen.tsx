@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Figures from './Figures'
 import RouteScreen from './RouteScreen'
+import PostcardOut from './PostcardOut'
 import { Bell } from './Pwa'
 import { readExif } from '@/lib/exif'
 import { enqueue, drain, all } from '@/lib/queue'
@@ -39,7 +40,7 @@ type MapCfg = { tileUrl: string; attribution: string; terrainUrl?: string | null
 export default function GoScreen({ token, map, vapid }: { token: string; map: MapCfg; vapid: string | null }) {
   const [me, setMe] = useState<Me | null>(null)
   const [err, setErr] = useState<string | null>(null)
-  const [mode, setMode] = useState<'home' | 'photo' | 'clip' | 'diary' | 'checkin' | 'fork' | 'post' | 'how-photo' | 'how-clip' | 'how-diary' | 'voice' | 'film'>('home')
+  const [mode, setMode] = useState<'home' | 'photo' | 'clip' | 'diary' | 'checkin' | 'fork' | 'post' | 'card' | 'how-photo' | 'how-clip' | 'how-diary' | 'voice' | 'film'>('home')
   const [queued, setQueued] = useState(0)
   // A post the server refuses outright used to disappear without a word.
   const [refused, setRefused] = useState<string | null>(null)
@@ -365,6 +366,9 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
   const nextFork = state.forks.find(f => { const s = state.route.segments.find(x => x.from === f.atName); return s && state.position.km < s.km + 0.1 && !f.chosen })
   const forkNear = nextFork && (() => { const s = state.route.segments.find(x => x.from === nextFork.atName); return s ? s.km - state.position.km <= 60 : false })()
   const kept = state.posts.filter(p => p.private).length
+  const dayNo = state.started && state.walk.startsOn
+    ? Math.round((Date.parse(new Intl.DateTimeFormat('en-CA', { timeZone: state.walk.timezone }).format(new Date())) - Date.parse(state.walk.startsOn)) / 86400000) + 1
+    : null
   const tonight = bundle.filter(m => !m.delivered_at)
   const delivered = bundle.filter(m => m.delivered_at)
   // Their own buttons: one row of icons under the map, because the map is the
@@ -438,6 +442,13 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
             </span>
           )}
         </p>
+      )}
+
+      {state.posts.some(p => p.mediaUrl || p.posterUrl) && (
+        <button className="dock-post" onClick={() => setMode('card')}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2" /><path d="M12.5 5v14M15 8.5h4M15 11.5h4" /><circle cx="7.5" cy="10" r="1.6" /><path d="M4.5 16.5l2.5-3 2 2.2 1.3-1.4 1.7 2.2" /></svg>
+          <span><b>Send a postcard home</b><span>{state.started ? `Day ${dayNo} · ${state.position.km.toFixed(0)} km walked, ${toGo.toFixed(0)} to go` : 'Where you are, and how far, for WhatsApp'}</span></span>
+        </button>
       )}
 
       {nextFork && forkNear && (
@@ -664,6 +675,8 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
           <div className="row"><button className="btn ghost" onClick={() => setMode('home')}>Back</button></div>
         </div>
       )}
+
+      {mode === 'card' && <PostcardOut state={state} publicUrl={publicUrl} onClose={() => setMode('home')} />}
 
       {mode === 'post' && (
         <div className="sheet">
