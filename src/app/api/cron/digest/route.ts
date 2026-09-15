@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server'
-import { dbConfigured, dbSelect } from '@/lib/db'
+import { dbConfigured, dbSelect, dbUpdate } from '@/lib/db'
 import { pushTo } from '@/lib/push'
 import { cronSignature, today } from '@/lib/cronAuth'
 
 export const dynamic = 'force-dynamic'
 
-// Called once an evening by the scheduled function. For every live walk with
-// messages written since yesterday's post, the walkers get one notification.
+// Called once an evening by the scheduled function. Every message still
+// waiting is handed over: the walkers get one notification, and the rows are
+// stamped delivered so the wall says so and the walkers' screen stops
+// bundling the same post night after night. Anything written after the knock
+// waits for tomorrow's.
 export async function POST(req: Request) {
   const key = process.env.VAPID_PRIVATE_KEY
   const sig = req.headers.get('x-cron-sig') || ''
@@ -14,17 +17,20 @@ export async function POST(req: Request) {
   const ok = key && (sig === await cronSignature(today(), key) || sig === await cronSignature(today(-1), key))
   if (!ok) return NextResponse.json({ error: 'no' }, { status: 401 })
   if (!dbConfigured()) return NextResponse.json({ error: 'no database' }, { status: 503 })
-  const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString()
   const walks = await dbSelect<{ id: string; slug: string; name: string }>(`ultreia_walks?paid=eq.true&select=id,slug,name`)
-  const out: Record<string, number> = {}
+  const out: Record<string, { messages: number; pushed: number }> = {}
   for (const w of walks) {
-    const fresh = await dbSelect<{ id: string }>(`ultreia_messages?walk_id=eq.${w.id}&deleted_at=is.null&written_at=gte.${since}&select=id`)
-    if (!fresh.length) continue
-    const n = fresh.length
-    out[w.slug] = await pushTo(w.id, 'walker', {
+    const waiting = await dbSelect<{ id: string }>(`ultreia_messages?walk_id=eq.${w.id}&deleted_at=is.null&delivered_at=is.null&select=id`)
+    if (!waiting.length) continue
+    const n = waiting.length
+    // Stamp before pushing: a message counted as delivered and never pushed
+    // is on the walkers' screen regardless; the other way round bundles it again tomorrow.
+    await dbUpdate(`ultreia_messages?id=in.(${waiting.map(m => m.id).join(',')})`, { delivered_at: new Date().toISOString() })
+    const pushed = await pushTo(w.id, 'walker', {
       title: n === 1 ? 'One message from home' : `${n} messages from home`,
       body: 'Tonight’s post is in.', url: '/', tag: 'post',
     })
+    out[w.slug] = { messages: n, pushed }
   }
-  return NextResponse.json({ ok: true, pushed: out })
+  return NextResponse.json({ ok: true, delivered: out })
 }
