@@ -59,14 +59,19 @@ async function keep(token: string, r: Reading) {
   const choices = await getChoices(auth.walk.id)
   const route = buildRoute(auth.walk.camino, auth.walk.plan, choices)
   const snap = snapToRoute(route, [r.lng, r.lat])
-  if (snap.offKm > 5) return NextResponse.json({ ok: true, kept: false, why: 'off the route' })
-
+  // A ping far from the planned line used to be thrown away, which is how
+  // two days of walking the inland way left no trace at all. It is kept
+  // now, unplaced: it moves nothing on the map, but it is evidence, and the
+  // walkers' screen reads it to ask whether the map has the wrong way.
+  const placed = snap.offKm <= 5
   await dbInsert('ultreia_posts', {
     walk_id: auth.walk.id, walker: auth.walker.key, kind: 'ping',
-    km: +snap.km.toFixed(2), km_source: 'tracker', segment_id: snap.segment,
+    km: placed ? +snap.km.toFixed(2) : null,
+    km_source: placed ? 'tracker' : null,
+    segment_id: placed ? snap.segment : null,
     lat: r.lat, lng: r.lng, taken_at: r.at.toISOString(),
   })
-  return NextResponse.json({ ok: true, kept: true, km: +snap.km.toFixed(2) })
+  return NextResponse.json({ ok: true, kept: true, placed, km: placed ? +snap.km.toFixed(2) : null, offKm: +snap.offKm.toFixed(1) })
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ token: string }> }) {

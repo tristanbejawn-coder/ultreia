@@ -17,7 +17,12 @@ import Postcard from './Postcard'
 import { fmtDate } from '@/lib/fmt'
 
 type Bundle = MessageRow[]
-type Me = { walker: { key: string; name: string }; state: ClientState; bundle: Bundle }
+type Suggestion = { forkId: string; optionId: string; question: string; label: string; offKm: number; thenOffKm: number }
+type Me = {
+  walker: { key: string; name: string }; state: ClientState; bundle: Bundle
+  // Pictures that couldn't find the line, and the way that would explain them.
+  drift?: { unplaced: number; suggestion: Suggestion | null }
+}
 
 async function shrink(file: File, maxDim = 1800): Promise<{ blob: Blob; width: number; height: number }> {
   const bmp = await createImageBitmap(file)
@@ -342,6 +347,18 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
     setMode('home'); load()
   }
 
+  const [switching, setSwitching] = useState(false)
+  async function takeTheWay(s: Suggestion) {
+    setSwitching(true)
+    const r = await fetch(`/api/go/${token}/choose`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ forkId: s.forkId, optionId: s.optionId }),
+    }).catch(() => null)
+    setSwitching(false)
+    if (!r || !r.ok) { alert('That didn’t save. Try again when there’s signal.'); return }
+    await load()
+  }
+
   async function choose(forkId: string, optionId: string) {
     const r = await fetch(`/api/go/${token}/choose`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ forkId, optionId }) }).catch(() => null)
     if (!r || !r.ok) { alert('That didn’t save. Try again when there’s signal.'); return }
@@ -361,7 +378,7 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
   if (err && !me) return <div className="go"><div className="empty"><b>Ultreia</b>{err}</div></div>
   if (!me) return <div className="go"><div className="empty"><b>Ultreia</b>Loading…</div></div>
 
-  const { state, walker, bundle } = me
+  const { state, walker, bundle, drift } = me
   const seg = state.position.segment
   const toGo = Math.max(0, state.route.totalKm - state.position.km)
   const nextFork = state.forks.find(f => { const s = state.route.segments.find(x => x.from === f.atName); return s && state.position.km < s.km + 0.1 && !f.chosen })
@@ -432,6 +449,27 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
           {tonight.length > 0 && <i className="dot-badge">{tonight.length}</i>}
         </button>
       </div>
+
+      {/* Two days of Ju and Jit's walk went unplaced because the map was
+          drawing the coast road while they walked inland, and nothing said
+          so. Now it asks. */}
+      {drift && drift.unplaced > 0 && (
+        <div className="dock-drift">
+          <b>{drift.unplaced === 1 ? 'The last picture isn’t on the map' : `The last ${drift.unplaced} pictures aren’t on the map`}</b>
+          {drift.suggestion ? (
+            <>
+              <span>You’re {drift.suggestion.offKm} km from the way we’re drawing. {drift.suggestion.question}</span>
+              <span className="dock-note-acts">
+                <button className="btn small" onClick={() => takeTheWay(drift.suggestion!)} disabled={switching}>
+                  {switching ? 'Switching…' : `Yes — ${drift.suggestion.label}`}
+                </button>
+              </span>
+            </>
+          ) : (
+            <span>They’re off the line we’re drawing, so they’re in the album but not on the map. Tap Arrived when you reach a town and the map will catch up.</span>
+          )}
+        </div>
+      )}
 
       {refused && (
         <p className="notice warn dock-note" onClick={() => { if (!bigFilm) setRefused(null) }}>
