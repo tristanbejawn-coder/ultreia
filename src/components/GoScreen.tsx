@@ -458,10 +458,10 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
           <b>{drift.unplaced === 1 ? 'The last picture isn’t on the map' : `The last ${drift.unplaced} pictures aren’t on the map`}</b>
           {drift.suggestion ? (
             <>
-              <span>You’re {drift.suggestion.offKm} km from the way we’re drawing. {drift.suggestion.question}</span>
+              <span>You’re {drift.suggestion.offKm} km from the way we’re drawing. It looks like you took: <b>{drift.suggestion.label}</b>.</span>
               <span className="dock-note-acts">
                 <button className="btn small" onClick={() => takeTheWay(drift.suggestion!)} disabled={switching}>
-                  {switching ? 'Switching…' : `Yes — ${drift.suggestion.label}`}
+                  {switching ? 'Switching…' : 'Yes, switch the map'}
                 </button>
               </span>
             </>
