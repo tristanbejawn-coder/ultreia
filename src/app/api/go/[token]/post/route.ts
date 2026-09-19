@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
-import { dbInsert, dbInsertNew, storagePut } from '@/lib/db'
+import { dbInsert, dbInsertNew, dbSelect, storagePut } from '@/lib/db'
 import { readExif } from '@/lib/exif'
 import { buildRoute, snapToRoute } from '@/lib/route'
+import { placeByTime, type Anchor } from '@/lib/whenWhere'
 import { getChoices, getWalkByToken } from '@/lib/walk'
 
 export const dynamic = 'force-dynamic'
@@ -79,6 +80,28 @@ export async function POST(req: Request, ctx: { params: Promise<{ token: string 
       km = +Math.max(0, Math.min(route.totalKm, said)).toFixed(2)
       segmentId = route.segmentStarts.find(s => km! >= s.km && km! <= s.endKm)?.id ?? null
       kmSource = 'manual'
+    } else if (takenAt) {
+      // No location in the picture and none offered: a phone that strips the
+      // location out still leaves the time in, so ask the walk's own track
+      // where they were then. Where the phone is at the moment of upload is
+      // no answer at all — that is the albergue, hours later.
+      const when = Date.parse(takenAt)
+      if (isFinite(when)) {
+        const window = 12 * 60 * 60 * 1000
+        const rows = await dbSelect<{ km: number | null; taken_at: string }>(
+          `ultreia_posts?walk_id=eq.${auth.walk.id}&deleted_at=is.null&km=not.is.null` +
+          `&taken_at=gte.${new Date(when - window).toISOString()}&taken_at=lte.${new Date(when + window).toISOString()}` +
+          `&select=km,taken_at&order=taken_at.asc&limit=200`)
+        const anchors: Anchor[] = rows.map(r => ({ km: r.km as number, at: Date.parse(r.taken_at) }))
+        const placed = placeByTime(anchors, when)
+        if (placed) {
+          const choices = await getChoices(auth.walk.id)
+          const route = buildRoute(auth.walk.camino, auth.walk.plan, choices)
+          km = +Math.max(0, Math.min(route.totalKm, placed.km)).toFixed(2)
+          segmentId = route.segmentStarts.find(s => km! >= s.km && km! <= s.endKm)?.id ?? null
+          kmSource = 'time'
+        }
+      }
     }
   }
 

@@ -11,6 +11,7 @@ import { readExif } from '@/lib/exif'
 import { enqueue, drain, all } from '@/lib/queue'
 import { CLIP_MAX_BYTES, CLIP_SECONDS, DIARY_SECONDS, readClip, uploadDirect } from '@/lib/clip'
 import { clock, playableEverywhere, soundFrom, startVoice, voiceSupported, VOICE_SECONDS, type Recording, type VoiceSession } from '@/lib/voice'
+import { takenJustNow } from '@/lib/whenWhere'
 import { FILM_CAP, filmSupported, mb, playsAnywhere, startFilm, type FilmSession } from '@/lib/film'
 import type { ClientState, MessageRow } from '@/lib/walk'
 import Postcard from './Postcard'
@@ -119,7 +120,20 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
     const ex = readExif(head)
     const { blob, width, height } = await shrink(f)
     let lat = ex.lat, lng = ex.lng, kmSource = 'exif'
-    if (lat == null || lng == null) { const h = await here(); if (h) { lat = h.lat; lng = h.lng; kmSource = 'device' } else kmSource = '' }
+    if (lat == null || lng == null) {
+      // Where the phone is standing answers "where am I now", which is only
+      // the same question when the picture is new. Android's picker strips
+      // the location out of anything from the gallery and leaves the time
+      // in, and a morning's photographs posted from the albergue all landed
+      // at the albergue. An older picture goes up without a location and the
+      // walk's own track places it by the time it was taken.
+      if (takenJustNow(ex.takenAt)) {
+        const h = await here()
+        if (h) { lat = h.lat; lng = h.lng; kmSource = 'device' } else kmSource = ''
+      } else {
+        kmSource = 'time'
+      }
+    }
     setDraft({ url: URL.createObjectURL(blob), blob, width, height, lat, lng, km: null, kmSource, takenAt: (ex.takenAt || new Date()).toISOString() })
     setCaption(''); setPlacing(false); setNoPlace(false); setMode('photo')
   }
@@ -529,6 +543,7 @@ export default function GoScreen({ token, map, vapid }: { token: string; map: Ma
               {draft.kmSource === 'exif' ? 'Placed from the photo’s own location'
                 : draft.kmSource === 'device' ? 'Placed where you are now'
                 : draft.kmSource === 'manual' ? `Placed by you · km ${draft.km?.toFixed(0)}`
+                : draft.kmSource === 'time' ? 'No location in this one — it’ll go where you were at the time it was taken'
                 : noPlace ? 'Not tagged to a place · goes in the album, not on the map'
                 : 'This picture carries no location'}
             </div>
